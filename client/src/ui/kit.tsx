@@ -54,7 +54,7 @@ export function ToastHost({ children }: { children: ReactNode }) {
             )}
           >
             <span aria-hidden className={cls('mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
-              x.kind === 'ok' ? 'bg-white/25' : 'bg-white/25')}>
+              x.kind === 'ok' ? 'bg-white/40' : 'bg-white/40')}>
               {x.kind === 'ok' ? '✓' : '!'}
             </span>
             <span className="font-medium leading-snug">{x.text}</span>
@@ -200,9 +200,9 @@ export function Field({ label, hint, children, className, required, error }: Fie
 }
 
 const inputBase =
-  'w-full rounded-lg border border-border-color bg-surface px-3 py-2 text-sm text-text-primary outline-none transition ' +
-  'placeholder:text-text-muted/50 focus:border-primary focus:ring-[3px] focus:ring-primary/15 ' +
-  'disabled:bg-muted disabled:text-text-muted';
+  'w-full rounded-lg border border-border-input bg-muted px-3 py-2 text-sm text-text-primary outline-none transition ' +
+  'placeholder:text-text-secondary/80 focus:border-primary focus:bg-surface focus:ring-[3px] focus:ring-primary/15 ' +
+  'disabled:bg-muted/60 disabled:text-text-muted';
 
 export function Input({ invalid, className, ...props }: InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
   return <input {...props} aria-invalid={invalid || undefined} className={cls(inputBase, invalid && 'border-danger', className)} />;
@@ -386,7 +386,7 @@ export function Modal({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/45 p-4 pt-[6vh] backdrop-blur-[2px]"
+      className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-slate-900/60 p-4 pt-[6vh]"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
@@ -462,7 +462,7 @@ export function Drawer({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[60]" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px] md:start-60" />
+      <div className="absolute inset-0 bg-black/50 md:start-60" />
       <div
         ref={panel}
         role="dialog"
@@ -540,9 +540,9 @@ export function Money({
     return `${sign}${s}`;
   })();
   return (
-    <span className={cls('num whitespace-nowrap', bold && 'font-bold', muted && 'opacity-70', className)}>
+    <span className={cls('num whitespace-nowrap', bold && 'font-bold', muted && 'text-text-secondary', className)}>
       {value}
-      <span className="ms-1 text-[0.8em] font-medium opacity-60">{currency}</span>
+      <span className="ms-1 text-[0.8em] font-medium text-text-secondary">{currency}</span>
     </span>
   );
 }

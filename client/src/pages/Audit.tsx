@@ -30,7 +30,7 @@ export default function Audit() {
         <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
           <Input type="date" value={filters.from} onChange={setF('from')} aria-label={t('from')} />
           <Input type="date" value={filters.to} onChange={setF('to')} aria-label={t('to')} />
-          <select value={filters.action} onChange={setF('action')} className="rounded-lg border border-border-color/[.15] px-2 py-2 text-sm">
+          <select value={filters.action} onChange={setF('action')} className="rounded-lg border border-border-color px-2 py-2 text-sm">
             <option value="">{t('action')}: {t('all')}</option>
             {actions.data?.actions?.map((a: string) => <option key={a} value={a}>{a}</option>)}
           </select>

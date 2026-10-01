@@ -104,7 +104,7 @@ export default function Transactions() {
           onClick={() => setShowFilters((v) => !v)}
         >
           {t('filters')}
-          {activeCount > 0 && <span className="num ms-1 rounded bg-white/25 px-1 text-[11px]">{activeCount}</span>}
+          {activeCount > 0 && <span className="num ms-1 rounded bg-primary px-1 text-[11px] text-white">{activeCount}</span>}
         </Button>
         {activeCount > 0 && (
           <Button variant="ghost" size="sm" onClick={clearAll}>{t('clear')}</Button>
@@ -151,7 +151,7 @@ export default function Transactions() {
       {loading && !data && <Card><SkeletonRows rows={8} cols={6} /></Card>}
 
       {data && (
-        <Card className={cls(refreshing && 'opacity-60 transition')}>
+        <Card className={cls(refreshing && 'relative', refreshing && 'before:absolute before:inset-0 before:bg-white/50 before:z-10')}>
           {/* Totals are per currency — two currencies are two books. */}
           {data.totals.length > 0 && (
             <div className="flex flex-wrap gap-x-6 gap-y-1 border-b border-border-color/[.08] px-4 py-2.5 text-xs">

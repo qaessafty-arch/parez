@@ -109,7 +109,7 @@ function CustomerModal({ customer, onClose, onSaved }: { customer: Customer | nu
         <Field label={t('notes')}><Input value={f.notes} onChange={set('notes')} /></Field>
       </div>
       {error && <div className="mt-4 rounded-lg bg-out-50 px-3 py-2 text-sm text-out-600">{error}</div>}
-      <div className="mt-5 flex justify-end gap-2 border-t border-border-color/[.08] pt-4">
+      <div className="mt-5 flex justify-end gap-2 border-t border-border-color pt-4">
         <Button variant="outline" onClick={onClose}>{t('cancel')}</Button>
         <Button onClick={submit} disabled={busy}>{busy ? t('loading') : t('save')}</Button>
       </div>
@@ -149,7 +149,7 @@ function HistoryModal({ id, onClose }: { id: number; onClose: () => void }) {
             </div>
           </div>
 
-          <div className="flex gap-1 border-b border-border-color/[.08]">
+          <div className="flex gap-1 border-b border-border-color">
             {(['txns', 'contracts', 'payments'] as const).map((k) => (
               <button
                 key={k}

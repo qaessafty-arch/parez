@@ -155,7 +155,7 @@ export default function Closing() {
             {history.data?.days?.length ? (
               <div className="max-h-[60vh] space-y-3 overflow-y-auto">
                 {history.data.days.map((d: any) => (
-                  <div key={d.date} className="rounded-lg border border-border-color/[.08] p-3">
+                  <div key={d.date} className="rounded-lg border border-border-color p-3">
                     <div className="mb-1.5 flex items-center justify-between">
                       <b className="num text-sm">{d.date}</b>
                       {can('closing.reopen') && (

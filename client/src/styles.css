@@ -13,16 +13,23 @@
   --color-danger: #EF4444;
   --color-info: #3B82F6;
 
-  --color-bg-page: #F8FAFC;
-  --color-bg-surface: #FFFFFF;
-  --color-bg-muted: #F1F5F9;
+  --color-surface: #FFFFFF;
+  --color-muted: #E9EEF5;
+  --color-page: #F8FAFC;
 
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #64748B;
+  --color-text: #0F172A;
+  --color-text-secondary: #475569;
   --color-text-muted: #94A3B8;
 
-  --color-border-color: #E2E8F0;
-  --color-border-input: #CBD5E1;
+  --color-border: #E2E8F0;
+  --color-border-input: #94A3B8;
+
+  --color-in-bg: #ECFDF5;
+  --color-in-text: #059669;
+  --color-out-bg: #FEF2F2;
+  --color-out-text: #DC2626;
+  --color-transfer-bg: #F1F5F9;
+  --color-transfer-text: #64748B;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -47,14 +54,20 @@
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
   --color-info: #3B82F6;
-  --bg-page: #F8FAFC;
-  --bg-surface: #FFFFFF;
-  --bg-muted: #F1F5F9;
-  --text-primary: #0F172A;
-  --text-secondary: #64748B;
-  --text-muted: #94A3B8;
-  --border-color: #E2E8F0;
-  --border-input: #CBD5E1;
+  --color-surface: #FFFFFF;
+  --color-muted: #E9EEF5;
+  --color-page: #F8FAFC;
+  --color-text: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94A3B8;
+  --color-border: #E2E8F0;
+  --color-border-input: #94A3B8;
+  --color-in-bg: #ECFDF5;
+  --color-in-text: #059669;
+  --color-out-bg: #FEF2F2;
+  --color-out-text: #DC2626;
+  --color-transfer-bg: #F1F5F9;
+  --color-transfer-text: #64748B;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -74,24 +87,23 @@
    doesn't just invert. Theme is saved to localStorage.
    ============================================================ */
 .dark {
-  --color-bg-page: #0F172A;
-  --color-bg-surface: #1E293B;
-  --color-bg-muted: #334155;
-  --color-text-primary: #F8FAFC;
-  --color-text-secondary: #CBD5E1;
-  --color-text-muted: #94A3B8;
-  --color-border-color: #475569;
-  --color-border-input: #64748B;
+  --color-surface: #1E293B;
+  --color-muted: #3F4D66;
+  --color-page: #0F172A;
 
-  /* Legacy variable names (used by raw CSS) */
-  --bg-page: #0F172A;
-  --bg-surface: #1E293B;
-  --bg-muted: #334155;
-  --text-primary: #F8FAFC;
-  --text-secondary: #CBD5E1;
-  --text-muted: #94A3B8;
-  --border-color: #475569;
-  --border-input: #64748B;
+  --color-text: #F8FAFC;
+  --color-text-secondary: #E2E8F0;
+  --color-text-muted: #94A3B8;
+
+  --color-border: #475569;
+  --color-border-input: #94A3B8;
+
+  --color-in-bg: #064E3B;
+  --color-in-text: #6EE7B7;
+  --color-out-bg: #7F1D1D;
+  --color-out-text: #FCA5A5;
+  --color-transfer-bg: #334155;
+  --color-transfer-text: #94A3B8;
 }
 
 /* ============================================================
@@ -167,6 +179,51 @@ textarea {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ============================================================
+   Global form field contrast — both themes, no glass bleed
+   ============================================================ */
+:root {
+  --field-bg: var(--color-bg-muted);        /* #F1F5F9 light / #334155 dark */
+  --field-border: var(--color-border-input); /* #CBD5E1 light / #64748B dark */
+  --field-focus-ring: var(--color-primary);
+  --field-focus-bg: var(--color-bg-surface);
+}
+
+/* All raw inputs, selects, textareas — solid by default */
+input, select, textarea {
+  background-color: var(--field-bg) !important;
+  border: 1.5px solid var(--field-border) !important;
+  color: var(--color-text-primary) !important;
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+input::placeholder, select::placeholder, textarea::placeholder {
+  color: var(--color-text-secondary) !important;
+  opacity: 0.85;
+}
+input:focus, select:focus, textarea:focus {
+  background-color: var(--field-focus-bg) !important;
+  border-color: var(--field-focus-ring) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--field-focus-ring) 15%, transparent) !important;
+  outline: none !important;
+}
+input:disabled, select:disabled, textarea:disabled {
+  background-color: color-mix(in srgb, var(--field-bg) 60%, transparent) !important;
+  color: var(--color-text-muted) !important;
+  opacity: 1;
+}
+
+/* Table cells — always solid surface */
+td, th {
+  background-color: var(--color-bg-surface) !important;
+  border-color: var(--color-border-color) !important;
+}
+
+/* Sticky bars — never transparent */
+.sticky-top, .sticky-bottom, header[class*="sticky"], nav[class*="sticky"] {
+  background-color: var(--color-bg-surface) !important;
+  backdrop-filter: none !important;
 }
 
 /* ============================================================

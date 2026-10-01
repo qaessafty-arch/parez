@@ -103,7 +103,7 @@ export default function CommandPalette({ open, onClose, onNew }: { open: boolean
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-start justify-center bg-surface/95 p-4 pt-[10vh] backdrop-blur-[2px]"
+      className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-4 pt-[10vh]"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div role="dialog" aria-modal="true" aria-label={t('search_or_jump')} className="animate-rise w-full max-w-xl overflow-hidden rounded-xl border border-surface/10 bg-white shadow-2xl">
@@ -138,8 +138,8 @@ export default function CommandPalette({ open, onClose, onNew }: { open: boolean
                     onMouseEnter={() => setCursor(idx)}
                     onClick={it.run}
                     className={cls(
-                      'flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm',
-                      idx === cursor ? 'bg-surface/20 text-text-primary' : 'text-text-muted hover:bg-surface/10'
+                      'flex w-full items-center gap-3 px-4 py-2.5 text-start text-sm rounded-lg',
+                      idx === cursor ? 'bg-primary/10 text-primary' : 'text-text-muted hover:bg-muted'
                     )}
                   >
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center text-text-muted">{it.icon ?? <Dot />}</span>

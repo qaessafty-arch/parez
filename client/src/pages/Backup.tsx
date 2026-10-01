@@ -46,7 +46,7 @@ export default function Backup() {
 
       {data && (
         <Card>
-          <div className="flex items-center justify-between border-b border-border-color/[.08] px-4 py-3 text-xs text-text-secondary">
+          <div className="flex items-center justify-between border-b border-border-color px-4 py-3 text-xs text-text-secondary">
             <span>
               {t('dash_last_backup')}:{' '}
               <b className="num">{data.last_backup_at ? String(data.last_backup_at).slice(0, 16).replace('T', ' ') : t('dash_never')}</b>

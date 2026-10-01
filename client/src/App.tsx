@@ -127,25 +127,26 @@ export default function App() {
 
   return (
     <SessionContext.Provider value={boot.session}>
-      <AppShell />
       <Routes>
-        <Route path="/" element={<Guard perm="dashboard.view"><Dashboard /></Guard>} />
-        <Route path="/transactions" element={<Guard perm="transaction.view"><Transactions /></Guard>} />
-        <Route path="/fastpay" element={<Guard perm="transaction.view"><Wallets serviceCode="fastpay" /></Guard>} />
-        <Route path="/nasswallet" element={<Guard perm="transaction.view"><Wallets serviceCode="nasswallet" /></Guard>} />
-        <Route path="/ronaki" element={<Guard perm="ronaki.view"><Ronaki /></Guard>} />
-        <Route path="/customers" element={<Guard perm="customer.view"><Customers /></Guard>} />
-        <Route path="/expenses" element={<Guard perm="expense.view"><Expenses /></Guard>} />
-        <Route path="/income" element={<Guard perm="report.view"><Income /></Guard>} />
-        <Route path="/reports" element={<Guard perm="report.view"><Reports /></Guard>} />
-        <Route path="/closing" element={<Guard perm="closing.view"><Closing /></Guard>} />
-        <Route path="/receipts" element={<Guard perm="receipt.print"><Receipts /></Guard>} />
-        <Route path="/audit" element={<Guard perm="audit.view"><Audit /></Guard>} />
-        <Route path="/users" element={<Guard perm="user.manage"><Users /></Guard>} />
-        <Route path="/settings" element={<Guard perm="settings.manage"><Settings /></Guard>} />
-        <Route path="/backup" element={<Guard perm="backup.manage"><Backup /></Guard>} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="*" element={<EmptyState text="404" />} />
+        <Route element={<AppShell />}>
+          <Route path="/" element={<Guard perm="dashboard.view"><Dashboard /></Guard>} />
+          <Route path="/transactions" element={<Guard perm="transaction.view"><Transactions /></Guard>} />
+          <Route path="/fastpay" element={<Guard perm="transaction.view"><Wallets serviceCode="fastpay" /></Guard>} />
+          <Route path="/nasswallet" element={<Guard perm="transaction.view"><Wallets serviceCode="nasswallet" /></Guard>} />
+          <Route path="/ronaki" element={<Guard perm="ronaki.view"><Ronaki /></Guard>} />
+          <Route path="/customers" element={<Guard perm="customer.view"><Customers /></Guard>} />
+          <Route path="/expenses" element={<Guard perm="expense.view"><Expenses /></Guard>} />
+          <Route path="/income" element={<Guard perm="report.view"><Income /></Guard>} />
+          <Route path="/reports" element={<Guard perm="report.view"><Reports /></Guard>} />
+          <Route path="/closing" element={<Guard perm="closing.view"><Closing /></Guard>} />
+          <Route path="/receipts" element={<Guard perm="receipt.print"><Receipts /></Guard>} />
+          <Route path="/audit" element={<Guard perm="audit.view"><Audit /></Guard>} />
+          <Route path="/users" element={<Guard perm="user.manage"><Users /></Guard>} />
+          <Route path="/settings" element={<Guard perm="settings.manage"><Settings /></Guard>} />
+          <Route path="/backup" element={<Guard perm="backup.manage"><Backup /></Guard>} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="*" element={<EmptyState text="404" />} />
+        </Route>
       </Routes>
     </SessionContext.Provider>
   );

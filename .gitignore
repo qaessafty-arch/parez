@@ -1,33 +1,7 @@
-# Dependencies
-node_modules
-
-# Production build
-/dist
-/build
-
-# Environment variables
-/.env*
-/.local.env*
-
-# TypeScript
-*.tsbuildinfo
-*.tsbuildhash
-*.local.tsbuildinfo
-
-# Vite/React client
-/client/dist
-/client/.vite
-
-# Localizations
-/**/locales/*.json
-
-# Editor directories and files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Database
+data/
+node_modules/
+.env
 *.db
-*.sqlite
+*.log
+dist/
+.DS_Store

@@ -119,7 +119,7 @@ export default function AppShell() {
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 border-b border-border-color bg-surface/95 backdrop-blur">
+        <header className="sticky top-0 z-30 border-b border-border-color bg-surface">
           <div className="flex items-center justify-between px-4 py-2.5">
             <div className="flex items-center gap-3">
               <button
@@ -188,7 +188,7 @@ export default function AppShell() {
         </main>
 
         {/* Mobile bottom nav */}
-        <nav className="sticky bottom-0 z-30 flex items-stretch gap-1 border-t border-border-color bg-surface/95 px-2 py-1.5 backdrop-blur md:hidden">
+        <nav className="sticky bottom-0 z-30 flex items-stretch gap-1 border-t border-border-color bg-surface px-2 py-1.5 md:hidden">
           {quick.map((i) => (
             <button
               key={i.to}

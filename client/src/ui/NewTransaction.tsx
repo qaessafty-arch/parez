@@ -128,7 +128,6 @@ export default function NewTransaction({ onClose, onCreated, serviceCode, typeCo
       open
       onClose={onClose}
       title={t('new_transaction')}
-      subtitle={t('ledger_preview')}
       wide
       footer={
         <>
@@ -156,33 +155,9 @@ export default function NewTransaction({ onClose, onCreated, serviceCode, typeCo
         className="grid grid-cols-1 gap-4 sm:grid-cols-2"
         onSubmit={(e) => { e.preventDefault(); submit(false); }}
       >
-        {!serviceCode && (
-          <Field label={t('service')} required>
-            <Select value={f.service_code} onChange={set('service_code')}>
-              {master.services.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
-            </Select>
-          </Field>
-        )}
-        <Field label={t('type')} required>
-          <Select value={f.type_code} onChange={set('type_code')}>
-            {master.transaction_types.map((x) => (
-              <option key={x.code} value={x.code}>{x.name} — {x.direction}</option>
-            ))}
-          </Select>
-        </Field>
-
-        {isAdjustment && (
-          <Field label={t('direction')} required>
-            <Select value={direction} onChange={(e) => setDirection(e.target.value as 'in' | 'out')}>
-              <option value="in">in (↓)</option>
-              <option value="out">out (↑)</option>
-            </Select>
-          </Field>
-        )}
-
         {/* Amount leads: it is the number the customer says out loud. */}
         <div className="sm:col-span-2">
-          <div className="rounded-xl border border-border-color/10 bg-surface p-4">
+          <div className="rounded-xl border border-border-color bg-white p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
               <Field label={t('amount')} required error={amountInvalid ? t('invalid_amount') : null} className="flex-1">
                 <MoneyInput
@@ -263,7 +238,7 @@ export default function NewTransaction({ onClose, onCreated, serviceCode, typeCo
 
         <label className="flex items-center gap-2 text-sm text-text-secondary sm:col-span-2">
           <input type="checkbox" checked={f.receipt} onChange={set('receipt')} className="h-4 w-4 accent-emerald-600" />
-          {t('receipt_number')}
+          {t('print')}
         </label>
 
         {draft.restored && (

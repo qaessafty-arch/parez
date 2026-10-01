@@ -95,11 +95,11 @@ export function ReceiptView({ id, onClose }: { id: string; onClose?: () => void 
   };
 
   return (
-    <Modal open onClose={onClose ?? (() => {})} title={data ? `${t('receipt_number')} ${data.receipt_number}` : t('nav_receipts')} wide>
+    <Modal open onClose={onClose ?? (() => {})} title={data ? `${t('receipt_number')} ${data.receipt_number}` : t('nav_receipts')}>
       {loading && <Spinner />}
       {data && (
         <div className="print-area">
-          <div className="mx-auto max-w-sm rounded-lg border border-dashed border-border-color/[.15] bg-white p-6 font-mono text-[13px] text-text-primary">
+          <div className="mx-auto max-w-sm rounded border border-border-color/30 bg-white p-4 font-mono text-[12px] text-text-primary">
             <div className="text-center">
               <div className="text-lg font-bold">{data.snapshot.shop.name}</div>
               <div className="text-xs text-text-secondary">{data.snapshot.shop.address}</div>
