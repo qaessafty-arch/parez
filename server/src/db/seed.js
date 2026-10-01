@@ -6,6 +6,8 @@
  */
 import { getDb, transaction } from './index.js';
 import { seedDemo } from './seedDemo.js';
+import { config } from '../config.js';
+import { hashPassword } from '../services/auth.js';
 
 const MASTER_ROLES = [
   {

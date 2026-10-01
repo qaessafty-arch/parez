@@ -88,7 +88,7 @@ export async function api<T = any>(path: string, opts: Opts = {}): Promise<T> {
       const res = await fetch(path, {
         method,
         headers,
-        credentials: 'same-origin',
+        credentials: 'include',
         body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
         signal,
       });

@@ -104,14 +104,22 @@ export default function AppShell() {
 
         {/* User */}
         <div className="border-t border-border-color px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-              {user?.full_name?.slice(0, 1).toUpperCase()}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                {user?.full_name?.slice(0, 1).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-xs font-semibold text-text-primary">{user?.full_name}</div>
+                <div className="truncate text-[10px] text-text-muted">{user?.role_name}</div>
+              </div>
             </div>
-            <div className="min-w-0">
-              <div className="truncate text-xs font-semibold text-text-primary">{user?.full_name}</div>
-              <div className="truncate text-[10px] text-text-muted">{user?.role_name}</div>
-            </div>
+            <Button variant="ghost" size="sm" onClick={async () => {
+              await api('/api/auth/logout', { method: 'POST' });
+              window.location.href = '/';
+            }}>
+              Logout
+            </Button>
           </div>
         </div>
       </aside>

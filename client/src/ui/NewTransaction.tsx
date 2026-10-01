@@ -183,6 +183,15 @@ export default function NewTransaction({ onClose, onCreated, serviceCode, typeCo
           </div>
         </div>
 
+        {isAdjustment && (
+          <Field label={t('direction')} required>
+            <Select value={direction} onChange={(e) => setDirection(e.target.value as 'in' | 'out')}>
+              <option value="in">in (↓)</option>
+              <option value="out">out (↑)</option>
+            </Select>
+          </Field>
+        )}
+
         <Field label={t('account')} required>
           <Select value={f.account_id} onChange={set('account_id')}>
             {master.accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.code})</option>)}

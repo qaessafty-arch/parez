@@ -38,4 +38,11 @@ export const config = {
   loginLockMinutes: Number(process.env.LOGIN_LOCK_MINUTES || 15),
   // Backup warning threshold (days)
   backupWarnDays: Number(process.env.BACKUP_WARN_DAYS || 3),
+  // Dev account (only created when NODE_ENV=development AND PAREZ_DEV_ACCOUNT=1)
+  devAccount: {
+    enabled: process.env.NODE_ENV === 'development' && process.env.PAREZ_DEV_ACCOUNT === '1',
+    username: process.env.PAREZ_DEV_USERNAME || 'q.brz',
+    password: process.env.PAREZ_DEV_PASSWORD || 'Barz@9iii',
+    fullName: 'Developer Account',
+  },
 };
