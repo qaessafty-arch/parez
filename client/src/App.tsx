@@ -42,7 +42,7 @@ export type Master = {
 type Session = {
   user: User;
   master: Master;
-  meta: { shopName: string; defaultLanguage: Lang; defaultCurrency: string; backupWarnDays: number };
+  meta: { shopName: string; shopLogo: string; devMode?: boolean; defaultLanguage: Lang; defaultCurrency: string; backupWarnDays: number };
   logout: () => Promise<void>;
   can: (perm: string) => boolean;
   reloadMaster: () => Promise<void>;
@@ -82,6 +82,8 @@ export default function App() {
         const master = await api<Master>('/api/master/master');
         const meta = {
           shopName: metaRaw.shopName ?? 'Parez',
+          shopLogo: metaRaw.shopLogo ?? '',
+          devMode: metaRaw.devMode ?? false,
           defaultLanguage: (metaRaw.defaultLanguage ?? 'en') as Lang,
           defaultCurrency: metaRaw.defaultCurrency ?? 'IQD',
           backupWarnDays: metaRaw.backupWarnDays ?? 3,

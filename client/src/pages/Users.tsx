@@ -3,7 +3,7 @@ import { api, errText } from '../lib/api';
 import { useI18n } from '../lib/i18n';
 import { cls } from '../lib/format';
 import {
-  Badge, Button, Card, Field, Input, Modal, PageHeader, Spinner, Table, Td, useLoad, useToast,
+  Badge, Button, Card, ConfirmDialog, Field, Input, Modal, PageHeader, Spinner, Table, Td, useLoad, useToast,
 } from '../ui/kit';
 import { useSession } from '../App';
 
@@ -13,7 +13,21 @@ export default function Users() {
   const toast = useToast();
   const [edit, setEdit] = useState<any | 'new' | null>(null);
   const [pwUser, setPwUser] = useState<any | null>(null);
+  const [toggle, setToggle] = useState<any | null>(null);
   const { data, loading, error, reload } = useLoad(() => api<any>('/api/users'), []);
+
+  const runToggle = async () => {
+    if (!toggle) return;
+    try {
+      await api(`/api/users/${toggle.id}`, { method: 'PATCH', body: { is_active: !toggle.is_active } });
+      toast('ok', toggle.is_active ? t('disable_account') : t('enable_account'));
+      setToggle(null);
+      reload();
+    } catch (e) {
+      toast('err', errText(e));
+      setToggle(null);
+    }
+  };
 
   return (
     <div>
@@ -37,6 +51,15 @@ export default function Users() {
                 <Td>
                   <div className="flex gap-1">
                     <Button size="sm" variant="outline" onClick={() => setEdit(u)}>{t('edit')}</Button>
+                    <Button
+                      size="sm"
+                      variant={u.is_active ? 'ghost' : 'outline'}
+                      disabled={u.id === me.id}
+                      title={u.id === me.id ? '—' : (u.is_active ? t('disable_account') : t('enable_account'))}
+                      onClick={() => setToggle(u)}
+                    >
+                      {u.is_active ? '⊘' : '✓'}
+                    </Button>
                     <Button size="sm" variant="ghost" onClick={() => setPwUser(u)}>🔑</Button>
                   </div>
                 </Td>
@@ -72,6 +95,15 @@ export default function Users() {
           onSaved={() => { setEdit(null); reload(); toast('ok', t('save')); }}
         />
       )}
+      <ConfirmDialog
+        open={Boolean(toggle)}
+        onClose={() => setToggle(null)}
+        onConfirm={runToggle}
+        title={toggle?.is_active ? t('disable_account') : t('enable_account')}
+        body={t('confirm_disable_account')}
+        confirmText={t('confirm')}
+        danger={Boolean(toggle?.is_active)}
+      />
       {pwUser && <PasswordModal user={pwUser} onClose={() => setPwUser(null)} onDone={() => { setPwUser(null); toast('ok', t('change_password')); }} />}
     </div>
   );

@@ -16,6 +16,9 @@ import {
   dashboardRouter, reportsRouter, searchRouter, auditRouter, incomeRouter, backupsRouter,
 } from './extras.js';
 import { masterRouter, settingsRouter } from './meta.js';
+import brandingRouter from './branding.js';
+import devRouter from './dev.js';
+import { config } from '../config.js';
 
 const router = Router();
 
@@ -27,7 +30,15 @@ router.use('/auth', authRouter);
 router.use(requireAuth);
 
 router.get('/meta', (req, res) => {
-  res.json({ ...setupPublicInfo(), user: req.user, now: new Date().toISOString() });
+  const info = setupPublicInfo();
+  res.json({
+    ...info,
+    // A stored filename is not a URL; give the client something it can load.
+    shopLogo: info.shop?.logo ? `/api/branding/logo/${info.shop.logo}` : '',
+    devMode: config.devAccount.enabled,
+    user: req.user,
+    now: new Date().toISOString(),
+  });
 });
 
 router.use('/master', masterRouter);
@@ -48,5 +59,10 @@ router.use('/search', searchRouter);
 router.use('/audit', auditRouter);
 router.use('/income', incomeRouter);
 router.use('/backups', backupsRouter);
+router.use('/branding', brandingRouter);
+
+// Dev diagnostics exist only when the server booted with the dev account
+// enabled. In a production install this branch is never taken.
+if (config.devAccount.enabled) router.use('/dev', devRouter);
 
 export default router;

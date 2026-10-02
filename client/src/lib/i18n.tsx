@@ -293,6 +293,22 @@ const ku = {
   results: 'ئەنجام',
   view_all: 'بینینی هەموو',
   watermark: 'بە خۆشەویستی و بە هۆی پەسەندکردن دا بەلایەن q.brz دروستکراوە',
+  // branding
+  shop_logo: 'لۆگۆی دوگمە',
+  shop_logo_hint: 'PNG، JPEG یان WebP — زۆرتر لە ٥١٢ کیلۆبایت',
+  shop_logo_upload: 'بارکردنی لۆگۆ',
+  shop_logo_remove: 'سڕینەوەی لۆگۆ',
+  shop_logo_current: 'لۆگۆی ئێستا',
+  // accounts
+  disable_account: 'چالاککردنەوەی هەژمار',
+  enable_account: 'چالاککردنی هەژمار',
+  account_disabled: 'ناچالاککراوە',
+  confirm_disable_account: 'هەژمارەکە چالاک بکەرەوە؟',
+  // dev
+  dev_panel: 'پانێڵی پەرەپێشە',
+  dev_info: 'زانیاری سیستەم',
+  dev_orphans: 'پشکنینی پەیوەندی',
+  dev_no_orphans: 'هیچ پێوەندییەی پاشڕەکەوە نییە',
 };
 export type Lang = 'ku' | 'ar' | 'en';
 export type TKey = keyof typeof ku;
@@ -566,6 +582,22 @@ const ar: Record<TKey, string> = {
   results: 'نتيجة',
   view_all: 'عرض الكل',
   watermark: 'تم التطوير بحب واحترام بواسطة q.brz',
+  // branding
+  shop_logo: 'شعار المتجر',
+  shop_logo_hint: 'PNG أو JPEG أو WebP — بحد أقصى ٥١٢ كيلوبايت',
+  shop_logo_upload: 'رفع الشعار',
+  shop_logo_remove: 'حذف الشعار',
+  shop_logo_current: 'الشعار الحالي',
+  // accounts
+  disable_account: 'تعطيل الحساب',
+  enable_account: 'تفعيل الحساب',
+  account_disabled: 'معطّل',
+  confirm_disable_account: 'هل تريد تعطيل هذا الحساب؟',
+  // dev
+  dev_panel: 'لوحة المطوّر',
+  dev_info: 'معلومات النظام',
+  dev_orphans: 'فحص العلاقات',
+  dev_no_orphans: 'لا توجد علاقات معلّقة',
 };
 const en: Record<TKey, string> = {
   app_name: 'Parez',
@@ -837,6 +869,22 @@ const en: Record<TKey, string> = {
   results: 'results',
   view_all: 'View all',
   watermark: 'Developed with love and respect by q.brz',
+  // branding
+  shop_logo: 'Shop logo',
+  shop_logo_hint: 'PNG, JPEG or WebP — up to 512 KB',
+  shop_logo_upload: 'Upload logo',
+  shop_logo_remove: 'Remove logo',
+  shop_logo_current: 'Current logo',
+  // accounts
+  disable_account: 'Disable account',
+  enable_account: 'Enable account',
+  account_disabled: 'Disabled',
+  confirm_disable_account: 'Disable this account?',
+  // dev
+  dev_panel: 'Developer panel',
+  dev_info: 'System information',
+  dev_orphans: 'Relationship check',
+  dev_no_orphans: 'No orphaned records',
 };
 const DICTS: Record<Lang, Partial<Record<TKey, string>>> = { ku, ar, en };
 

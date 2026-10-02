@@ -12,7 +12,9 @@ type Theme = "light" | "dark" | "system";
 
 export default function AppShell() {
   const { t, lang, setLang } = useI18n();
-  const { user, can } = useSession();
+  const { user, can, meta } = useSession();
+  const shopName = meta.shopName || 'Parez';
+  const shopLogo = meta.shopLogo || '';
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -70,10 +72,18 @@ export default function AppShell() {
       )}>
         {/* Brand */}
         <div className="flex items-center gap-3 border-b border-border-color px-4 py-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-lg font-black text-white">پ</div>
-          <div>
-            <div className="text-sm font-bold tracking-tight text-text-primary">PAREZ</div>
-            <div className="text-[10px] font-medium text-text-muted">Payment & Accounting</div>
+          {shopLogo ? (
+            <img
+              src={shopLogo}
+              alt=""
+              className="h-9 w-9 shrink-0 rounded-lg border border-border-color bg-surface object-contain"
+            />
+          ) : (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-lg font-black text-white">پ</div>
+          )}
+          <div className="min-w-0">
+            <div className="truncate text-sm font-bold tracking-tight text-text-primary">{shopName}</div>
+            <div className="truncate text-[10px] font-medium text-text-muted">Parez</div>
           </div>
         </div>
 
