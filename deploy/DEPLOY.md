@@ -18,12 +18,20 @@ console will say so before you confirm anything.
 
    | Field | Value |
    |---|---|
-   | Image | **Canonical Ubuntu 24.04** |
+   | Image | **Canonical Ubuntu 24.04** (labelled "Always Free Eligible") |
    | Shape | **VM.Standard.A1.Flex** |
    | OCPUs | **4** |
    | Memory | **24 GB** |
    | Networking | **Create new VCN**, assign a public IP |
    | SSH key | **Generate a key pair** — download the private key, you will need it |
+
+   **Note on the 4/24 figures.** Oracle's Always Free allowance is
+   1,500 OCPU-hours and 9,000 GB-hours per month. That is enough for
+   **4 OCPUs / 24 GB running for about half the month**, or 2/12
+   running continuously. Oracle's own documentation still lists the
+   older 4/24 figure; if the console rejects 24 GB, ask for **2 OCPUs
+   and 12 GB**, which is the guaranteed all-hours amount and is more
+   than enough for Parez.
 
 5. **If it says out of capacity:** this is common. Delete the instance and try
    another region. `Frankfurt`, `Amsterdam`, `Milan` and `Stockholm` usually
