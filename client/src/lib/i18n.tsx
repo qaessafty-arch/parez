@@ -292,6 +292,7 @@ const ku = {
   no_filters: 'پاڵاوتن نییە',
   results: 'ئەنجام',
   view_all: 'بینینی هەموو',
+  watermark: 'بە خۆشەویستی و بە هۆی پەسەندکردن دا بەلایەن q.brz دروستکراوە',
 };
 export type Lang = 'ku' | 'ar' | 'en';
 export type TKey = keyof typeof ku;
@@ -564,6 +565,7 @@ const ar: Record<TKey, string> = {
   no_filters: 'لا توجد عوامل تصفية',
   results: 'نتيجة',
   view_all: 'عرض الكل',
+  watermark: 'تم التطوير بحب واحترام بواسطة q.brz',
 };
 const en: Record<TKey, string> = {
   app_name: 'Parez',
@@ -834,6 +836,7 @@ const en: Record<TKey, string> = {
   no_filters: 'No filters',
   results: 'results',
   view_all: 'View all',
+  watermark: 'Developed with love and respect by q.brz',
 };
 const DICTS: Record<Lang, Partial<Record<TKey, string>>> = { ku, ar, en };
 

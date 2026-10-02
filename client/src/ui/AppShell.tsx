@@ -6,6 +6,7 @@ import { cls } from "../lib/format";
 import { Button } from "./kit";
 import { NAV, QUICK } from "./nav";
 import { useSession } from "../App";
+import { api } from "../lib/api";
 
 type Theme = "light" | "dark" | "system";
 
@@ -104,22 +105,14 @@ export default function AppShell() {
 
         {/* User */}
         <div className="border-t border-border-color px-4 py-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-                {user?.full_name?.slice(0, 1).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-xs font-semibold text-text-primary">{user?.full_name}</div>
-                <div className="truncate text-[10px] text-text-muted">{user?.role_name}</div>
-              </div>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+              {user?.full_name?.slice(0, 1).toUpperCase()}
             </div>
-            <Button variant="ghost" size="sm" onClick={async () => {
-              await api('/api/auth/logout', { method: 'POST' });
-              window.location.href = '/';
-            }}>
-              Logout
-            </Button>
+            <div className="min-w-0">
+              <div className="truncate text-xs font-semibold text-text-primary">{user?.full_name}</div>
+              <div className="truncate text-[10px] text-text-muted">{user?.role_name}</div>
+            </div>
           </div>
         </div>
       </aside>
@@ -184,6 +177,13 @@ export default function AppShell() {
                   </button>
                 ))}
               </div>
+
+              <Button variant="ghost" size="sm" onClick={async () => {
+                await api('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/';
+              }}>
+                {t('logout')}
+              </Button>
             </div>
           </div>
         </header>
@@ -194,6 +194,11 @@ export default function AppShell() {
             <Outlet />
           </div>
         </main>
+
+        {/* Watermark footer */}
+        <footer className="mt-auto px-4 pb-4 text-center">
+          <p className="text-[10px] text-text-muted/50 select-none">{t('watermark')}</p>
+        </footer>
 
         {/* Mobile bottom nav */}
         <nav className="sticky bottom-0 z-30 flex items-stretch gap-1 border-t border-border-color bg-surface px-2 py-1.5 md:hidden">

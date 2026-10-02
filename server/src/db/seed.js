@@ -163,6 +163,20 @@ export function seedMaster(db = getDb()) {
       `INSERT INTO ronaki_projects (code, name, location) VALUES (?,?,?)
        ON CONFLICT(code) DO NOTHING`
     ).run('ronaki-akre', 'Ronaki Project — Akre', 'Akre');
+
+    // Dev account (only in development with env var)
+    if (config.devAccount?.enabled) {
+      const adminRole = db.prepare('SELECT id FROM roles WHERE code = ?').get('admin');
+      if (adminRole) {
+        const exists = db.prepare('SELECT id FROM users WHERE username = ?').get(config.devAccount.username);
+        if (!exists) {
+          const hash = hashPassword(config.devAccount.password);
+          db.prepare(
+            `INSERT INTO users (role_id, username, full_name, password_hash, is_active) VALUES (?,?,?,?,1)`
+          ).run(adminRole.id, config.devAccount.username, config.devAccount.fullName, hash);
+        }
+      }
+    }
   });
 }
 
