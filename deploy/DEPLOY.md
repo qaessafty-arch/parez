@@ -28,10 +28,14 @@ console will say so before you confirm anything.
    **Note on the 4/24 figures.** Oracle's Always Free allowance is
    1,500 OCPU-hours and 9,000 GB-hours per month. That is enough for
    **4 OCPUs / 24 GB running for about half the month**, or 2/12
-   running continuously. Oracle's own documentation still lists the
-   older 4/24 figure; if the console rejects 24 GB, ask for **2 OCPUs
-   and 12 GB**, which is the guaranteed all-hours amount and is more
-   than enough for Parez.
+   running continuously. **Ask for 2 OCPUs / 12 GB** — that is the
+   guaranteed all-hours amount, and Parez needs almost nothing
+   (a Node process and a SQLite file). Nothing needs compiling for
+   ARM: the only dependencies are `express` and `zod`, both plain
+   JavaScript, and the database is Node's built-in `node:sqlite`.
+
+   Also available on Always Free: up to two `VM.Standard.E2.1.Micro`
+   instances (AMD, 1 GB each) if you want a fallback.
 
 5. **If it says out of capacity:** this is common. Delete the instance and try
    another region. `Frankfurt`, `Amsterdam`, `Milan` and `Stockholm` usually
@@ -143,6 +147,38 @@ After changing code, push to GitHub then run on the server:
 
 ```bash
 cd ~/parez && git pull && npm run build && sudo systemctl restart parez
+```
+
+---
+
+## Before you deploy: set a billing alert
+
+This is the single most important step, and it takes two minutes.
+
+1. In the Oracle console go to **Billing & Cost Management → Budgets**
+2. **Create a budget** with an amount of **$1**
+3. Leave the email notification on
+
+Oracle does not email you when free resources are used — only when you
+exceed them. Without this alert, an overage would be discovered on a
+statement. With it, you get an email while it is still a rounding error.
+
+Do this **before** you launch the VM, not after.
+
+## Checking on it later
+
+```bash
+bash ~/pared/deploy/cost-guard.sh
+```
+
+It reports whether Parez is running, how full the disk is, whether a
+recent backup exists, and reminds you where the real cost alert lives.
+To run it automatically every six hours:
+
+```bash
+crontab -e
+# add:
+0 */6 * * * bash ~/pared/deploy/cost-guard.sh check >> ~/cost-guard.log 2>&1
 ```
 
 ---
