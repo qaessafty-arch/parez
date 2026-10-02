@@ -1,0 +1,162 @@
+# Deploying Parez to a free always-on server
+
+Oracle Cloud Free Tier is the only host I have found that is genuinely free,
+has no monthly bill, and does not reclaim the machine for being idle.
+
+**What this costs you:** a card for identity verification only. It is never
+charged. If Oracle cannot provision a free VM in your chosen region, the
+console will say so before you confirm anything.
+
+---
+
+## 1. Create the VM (about 10 minutes, in a browser)
+
+1. Go to **cloud.oracle.com/free** → **Start for free**
+2. Sign up — a card is required for verification, not billing
+3. Pick a **home region**. This is permanent and cannot be changed later.
+4. When asked to "Launch a VM", choose:
+
+   | Field | Value |
+   |---|---|
+   | Image | **Canonical Ubuntu 24.04** |
+   | Shape | **VM.Standard.A1.Flex** |
+   | OCPUs | **4** |
+   | Memory | **24 GB** |
+   | Networking | **Create new VCN**, assign a public IP |
+   | SSH key | **Generate a key pair** — download the private key, you will need it |
+
+5. **If it says out of capacity:** this is common. Delete the instance and try
+   another region. `Frankfurt`, `Amsterdam`, `Milan` and `Stockholm` usually
+   have free capacity; `Ashburn` rarely does.
+
+6. When it boots, note the **public IP address** and the **username** (usually
+   `ubuntu`).
+
+---
+
+## 2. Prepare the server (5 minutes)
+
+Open PowerShell or a terminal on your computer:
+
+```bash
+ssh ubuntu@<SERVER-IP>
+```
+
+Then, on the server:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/qaessafty-arch/parez/master/deploy/host-setup.sh | bash
+```
+
+This installs Node 22, git, sets up a firewall, and adds swap. Safe to re-run.
+
+---
+
+## 3. Deploy Parez (10 minutes)
+
+Back on your own computer:
+
+```bash
+# send the Parez folder to the server
+scp -r . ubuntu@<SERVER-IP>:~/pared-deploy
+```
+
+Then log back in and deploy:
+
+```bash
+ssh ubuntu@<SERVER-IP>
+bash ~/pared-deploy/deploy/deploy.sh
+```
+
+The script installs dependencies, builds the client, installs a systemd
+service, and starts Parez. It never overwrites an existing database.
+
+When it finishes you get a URL such as `http://<SERVER-IP>:4177`.
+
+---
+
+## 4. Make it work on mobile (5 minutes)
+
+**A bare `http://` address will not work properly in most mobile browsers.**
+You need HTTPS. Do this on the server:
+
+```bash
+sudo apt-get install -y cloudflared
+cloudflared tunnel --url http://127.0.0.1:4177
+```
+
+It prints something like:
+
+```
+https://random-words-here.trycloudflare.com
+```
+
+That is your address. Open it on a phone. Done.
+
+**The URL changes every time you restart the tunnel.** For a permanent address
+see "Making the URL permanent" below.
+
+---
+
+## 5. Complete the setup
+
+Open the URL in a browser. The first screen asks for your shop name and asks
+you to create an admin account. After that it works normally.
+
+---
+
+## Making the URL permanent
+
+The quick tunnel above gives a random URL each time. To keep one address
+forever you need a Cloudflare account and a domain you own:
+
+```bash
+# one-time, in a browser: create a tunnel at dash.cloudflare.com
+cloudflared tunnel login
+cloudflared tunnel create parez
+cloudflared tunnel route dns parez parez.yourdomain.com
+```
+
+Then edit the tunnel config and run it as a service — the deploy folder's
+README covers the exact commands. A domain costs roughly $10 per year, which
+is the only recurring cost in this whole setup.
+
+---
+
+## Day-to-day
+
+```bash
+sudo systemctl status parez     # is it running?
+sudo journalctl -u parez -f     # watch logs live
+sudo systemctl restart parez    # restart
+```
+
+After changing code, push to GitHub then run on the server:
+
+```bash
+cd ~/parez && git pull && npm run build && sudo systemctl restart parez
+```
+
+---
+
+## Backups — do not skip this
+
+The database lives at `~/pared/data/parez.db`. That single file is the entire
+financial history.
+
+Use Parez's own **Backup → Back up now** page, then copy the downloaded file
+somewhere else — your own computer, not the server.
+
+A copy stored on the same machine is not a backup.
+
+---
+
+## If Oracle takes the instance back
+
+Oracle has reclaimed idle Always Free instances before. If Parez suddenly stops
+responding, check whether the VM still exists in the console. If it was
+released, download the `parez.db` backup you kept, create a fresh instance,
+and redeploy with the steps above.
+
+This is the main risk of the free tier, and the reason backups matter more
+here than on the local install.
