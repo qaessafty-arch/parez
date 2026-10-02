@@ -1,6 +1,7 @@
 /** API router — mounts all feature routes. */
 import { Router } from 'express';
 import { requireAuth } from '../middleware/index.js';
+import { getDb } from '../db/index.js';
 import setupRouter, { setupPublicInfo } from './setup.js';
 import authRouter from './auth.js';
 import usersRouter from './users.js';
@@ -34,7 +35,11 @@ router.get('/meta', (req, res) => {
   res.json({
     ...info,
     // A stored filename is not a URL; give the client something it can load.
-    shopLogo: info.shop?.logo ? `/api/branding/logo/${info.shop.logo}` : '',
+    // setupPublicInfo() returns flat keys, not a nested shop object.
+    shopLogo: (() => {
+      const file = getDb().prepare(`SELECT value FROM settings WHERE key='shop.logo'`).get()?.value;
+      return file ? `/api/branding/logo/${file}` : '';
+    })(),
     devMode: config.devAccount.enabled,
     user: req.user,
     now: new Date().toISOString(),
