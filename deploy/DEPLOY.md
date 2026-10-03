@@ -70,14 +70,14 @@ Back on your own computer:
 
 ```bash
 # send the Parez folder to the server
-scp -r . ubuntu@<SERVER-IP>:~/pared-deploy
+scp -r . ubuntu@<SERVER-IP>:~/parez-deploy
 ```
 
 Then log back in and deploy:
 
 ```bash
 ssh ubuntu@<SERVER-IP>
-bash ~/pared-deploy/deploy/deploy.sh
+bash ~/parez-deploy/deploy/deploy.sh
 ```
 
 The script installs dependencies, builds the client, installs a systemd
@@ -168,7 +168,7 @@ Do this **before** you launch the VM, not after.
 ## Checking on it later
 
 ```bash
-bash ~/pared/deploy/cost-guard.sh
+bash ~/pare/deploy/cost-guard.sh
 ```
 
 It reports whether Parez is running, how full the disk is, whether a
@@ -178,14 +178,14 @@ To run it automatically every six hours:
 ```bash
 crontab -e
 # add:
-0 */6 * * * bash ~/pared/deploy/cost-guard.sh check >> ~/cost-guard.log 2>&1
+0 */6 * * * bash ~/pare/deploy/cost-guard.sh check >> ~/cost-guard.log 2>&1
 ```
 
 ---
 
 ## Backups — do not skip this
 
-The database lives at `~/pared/data/parez.db`. That single file is the entire
+The database lives at `~/pare/data/parez.db`. That single file is the entire
 financial history.
 
 Use Parez's own **Backup → Back up now** page, then copy the downloaded file

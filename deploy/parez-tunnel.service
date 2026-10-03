@@ -1,0 +1,32 @@
+# Parez — HTTPS tunnel as a service.
+#
+# Keeps the public URL alive across reboots. Install on the server:
+#
+#   sudo cp ~/pare/deploy/parez-tunnel.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now parez-tunnel
+#   sudo systemctl status parez-tunnel
+#
+# NOTE: this uses a quick tunnel, so the URL still changes whenever the
+# service restarts. For a permanent address you need a Cloudflare account
+# and a domain — see DEPLOY.md, "Making the URL permanent".
+
+[Unit]
+Description=Parez public HTTPS tunnel (Cloudflare quick tunnel)
+After=network-online.target parez.service
+Wants=network-online.target
+Requires=parez.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cloudflared tunnel --url http://127.0.0.1:4177 --no-autoupdate
+Restart=always
+RestartSec=10
+
+# The current public address, so you can find it without reading logs:
+#   curl http://localhost:9644/  (cloudflared's metrics endpoint)
+#
+# Or:  journalctl -u parez-tunnel -f   and look for trycloudflare.com
+
+[Install]
+WantedBy=multi-user.target

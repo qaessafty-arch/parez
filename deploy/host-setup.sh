@@ -62,9 +62,9 @@ cat <<'EOF'
 
  Next: copy the Parez folder across and run deploy.sh
 
-   scp -r . user@<server-ip>:~/pared-deploy
+   scp -r . user@<server-ip>:~/parez-deploy
    ssh user@<server-ip>
-   bash ~/pared-deploy/deploy/deploy.sh
+   bash ~/parez-deploy/deploy/deploy.sh
 
 ============================================================
 EOF
