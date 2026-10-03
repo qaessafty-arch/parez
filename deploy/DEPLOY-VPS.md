@@ -1,7 +1,7 @@
 # Deploying Parez to a paid VPS (REGXA, or any provider)
 
-This is the straightforward path. ~30 minutes, ~$4.50/month, no signup
-frustration.
+This is the straightforward path. ~30 minutes to go live, a few dollars a
+month, no signup frustration.
 
 Works on **any** Ubuntu VPS — REGXA (Iraq), Dubai, Istanbul, Hetzner,
 DigitalOcean, Vultr. Only the first two steps change.
@@ -10,14 +10,20 @@ DigitalOcean, Vultr. Only the first two steps change.
 
 ## 1. Order the server
 
-**REGXA** — <https://regxa.com> — pick the Cloud VPS x2 plan:
+**REGXA** — <https://regxa.com> — they run several plans; the two
+cheapest published figures were around $4.50 and $7.99/month at the time
+of writing, for machines in Iraq.
 
 | | |
 |---|---|
-| Plan | **Cloud VPS x2 — $4.50/month** |
 | Location | **Iraq** |
-| OS | **Ubuntu 24.04** |
+| OS | **Ubuntu 24.04** (22.04 also fine) |
 | Access | **SSH key** |
+
+Check the current price on their site when you order — it may differ
+from what is written here. Parez needs roughly 1 GB RAM and 10 GB disk,
+so the smallest plan is enough; buying more only helps if you expect
+many simultaneous users.
 
 Other region options if you prefer:
 
