@@ -59,6 +59,27 @@ export function closingPreview(date = today()) {
     });
   }
 
+  // Dealer inventory (FIB, CardHouse, FastPay, NassWallet)
+  const dealerInventory = [];
+  for (const code of ['FASTPAY', 'NASSWALLET', 'FIB', 'CARDHOUSE']) {
+    const acct = db.prepare('SELECT * FROM accounts WHERE code = ?').get(code);
+    if (!acct) continue;
+    const inv = db.prepare('SELECT * FROM dealer_inventory WHERE account_id = ? AND currency = ?').get(acct.id, acct.currency);
+    if (inv) {
+      dealerInventory.push({
+        code: acct.code,
+        name: acct.name,
+        currency: acct.currency,
+        wholesale_qty: inv.wholesale_qty,
+        wholesale_cost_minor: inv.wholesale_cost_minor,
+        retail_qty: inv.retail_qty,
+        retail_revenue_minor: inv.retail_revenue_minor,
+        current_qty: inv.current_qty,
+        profit_minor: inv.profit_minor,
+      });
+    }
+  }
+
   return {
     date,
     closed: existing.length > 0 ? existing : null,
@@ -68,6 +89,7 @@ export function closingPreview(date = today()) {
     ronaki,
     accounts: allBalances(date),
     wallet_closings: walletClosings,
+    dealer_inventory: dealerInventory,
   };
 }
 
@@ -112,6 +134,28 @@ export function closeDay({ date = today(), actual = {}, note = '' }, user, ip) {
         .all(date)
         .map((r) => [r.currency, r.total])
     );
+
+    // Dealer inventory snapshot for closing
+    const dealerInventory = [];
+    for (const code of ['FASTPAY', 'NASSWALLET', 'FIB', 'CARDHOUSE']) {
+      const acct = conn.prepare('SELECT * FROM accounts WHERE code = ?').get(code);
+      if (!acct) continue;
+      const inv = conn.prepare('SELECT * FROM dealer_inventory WHERE account_id = ? AND currency = ?').get(acct.id, acct.currency);
+      if (inv) {
+        dealerInventory.push({
+          code: acct.code,
+          name: acct.name,
+          currency: acct.currency,
+          wholesale_qty: inv.wholesale_qty,
+          wholesale_cost_minor: inv.wholesale_cost_minor,
+          retail_qty: inv.retail_qty,
+          retail_revenue_minor: inv.retail_revenue_minor,
+          current_qty: inv.current_qty,
+          profit_minor: inv.profit_minor,
+        });
+      }
+    }
+
     const countByCur = Object.fromEntries(totals.map((t) => [t.currency, t.tx_count]));
     const commissionByCur = Object.fromEntries(totals.map((t) => [t.currency, t.commission_minor]));
 
