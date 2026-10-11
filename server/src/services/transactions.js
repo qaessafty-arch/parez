@@ -126,7 +126,8 @@ const CREATE_FIELDS = [
   'tx_number',
   'biz_date', 'time', 'service_id', 'type_id', 'customer_id', 'account_id', 'counter_account_id',
   'direction', 'amount_minor', 'currency', 'commission_minor', 'net_minor', 'payment_method',
-  'wallet_number', 'reference_no', 'description', 'fx_rate', 'fx_currency', 'fx_amount_minor',
+  'wallet_number', 'reference_no', 'card_type', 'wholesale_cost_minor', 'retail_price_minor',
+  'description', 'fx_rate', 'fx_currency', 'fx_amount_minor',
   'status', 'reversal_of', 'related_to', 'is_demo', 'created_by', 'updated_by',
 ];
 

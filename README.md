@@ -1,92 +1,221 @@
-# Parez — Shop Accounting & Payment Management System
+# parez - Shop Accounting & Payment Management System
 
-A production-quality accounting, payments and reconciliation system for a shop in **Akre, Kurdistan Region of Iraq**.
-Supports **FastPay**, **NassWallet**, **Ronaki Project** instalments, cash, expenses, receipts, reports, daily closing, audit trail and backups — in **Kurdish (Sorani) / Arabic / English** with full RTL, and strict **IQD / USD** currency separation.
+**Production-ready financial management for digital wallet operators in Kurdistan/Iraq.**
 
-## Stack
+Supports: FastPay, NassWallet, FIB (First Iraqi Bank), CardHouse (gift cards/vouchers), Ronaki projects, expenses, customers, daily closing, and audit trails.
 
-| Layer    | Tech |
-|----------|------|
-| Backend  | Node 22+ (ESM), Express 4, zod validation, **SQLite via `node:sqlite`** (no server to install), WAL mode |
-| Frontend | React 19 + TypeScript, Vite 6, Tailwind CSS 4, React Router 7 |
-| Tests    | Node built-in test runner (`node --test`) — 52 tests + end-to-end smoke script |
+---
 
-## Quick start
+## 🚀 Quick Start (Local Development)
 
 ```bash
+# 1. Clone & install
+git clone https://github.com/YOUR_USER/parez.git
+cd parez
 npm install
-npm run build     # build the frontend into client/dist
-npm start         # production server on http://127.0.0.1:4177
+
+# 2. Start dev servers (frontend: 5173, backend: 4177)
+npm run dev
+
+# 3. Open http://127.0.0.1:5173
+# Login: monib / 123456
 ```
 
-First visit → **initial setup** (shop name, currency, language, admin account), then log in.
+---
 
-Development (API + hot-reloading client together):
+## 🐳 Production Deployment (Hetzner VPS + Docker)
+
+### Prerequisites
+- Hetzner VPS (CX22: 2 vCPU, 4GB RAM, 40GB NVMe - €4.50/mo)
+- Domain name (e.g., `parez.yourdomain.com`)
+- S3-compatible storage for backups (Wasabi, Backblaze B2, AWS S3)
+
+### One-Command Deploy
+```bash
+# On fresh Ubuntu 22.04/24.04 VPS as root
+curl -fsSL https://raw.githubusercontent.com/YOUR_USER/parez/main/deploy.sh | bash
+```
+
+### What the deploy script does:
+1. **System prep** - Docker, Nginx, Certbot, Fail2ban, UFW
+2. **Security** - SSH hardening, auto-updates, firewall (22/80/443)
+3. **SSL** - Let's Encrypt auto-renewal
+4. **Backups** - Daily encrypted SQLite backup → S3/Wasabi/B2 (GLACIER)
+5. **Monitoring** - Health checks, log rotation, rate limiting
+6. **Application** - Docker Compose build & start
+
+### Post-Deploy
+- App: `https://parez.yourdomain.com`
+- Login: `monib` / `123456`
+- Logs: `docker compose logs -f`
+- Manual backup: `/etc/cron.daily/parez-backup`
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  VPS (Hetzner CX22 - €4.50/mo)                             │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │ Docker Network                                        │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  │ │
+│  │  │ parez-app    │  │ parez-db     │  │ nginx      │  │ │
+│  │  │ (Node.js)    │  │ (SQLite vol) │  │ (SSL/Proxy)│  │ │
+│  │  └──────────────┘  └──────────────┘  └────────────┘  │ │
+│  └───────────────────────────────────────────────────────┘ │
+│  ✅ UFW: 22/80/443 only | ✅ Fail2ban SSH | ✅ Auto SSL   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Services
+| Service | Port | Description |
+|---------|------|-------------|
+| `parez-app` | 4177 | Node.js API + SSR frontend |
+| `nginx` | 80/443 | SSL termination, rate limiting, proxy |
+| `certbot` | - | Let's Encrypt auto-renewal |
+
+---
+
+## 🔧 Configuration
+
+### Environment Variables (`.env`)
+```bash
+NODE_ENV=production
+DATABASE_URL=file:./data/parez.db
+COOKIE_SECURE=1
+SESSION_TTL_HOURS=24
+
+# Backup
+BACKUP_PASS=your-32-char-passphrase
+S3_BUCKET=your-bucket
+S3_ENDPOINT=https://s3.wasabisys.com
+AWS_ACCESS_KEY_ID=xxx
+AWS_SECRET_ACCESS_KEY=xxx
+```
+
+### GitHub Actions Secrets
+| Secret | Description |
+|--------|-------------|
+| `VPS_HOST` | VPS IP address |
+| `VPS_SSH_KEY` | Private SSH key (ed25519) |
+| `DOMAIN` | Your domain (e.g., `parez.yourdomain.com`) |
+
+---
+
+## 🔄 Update Workflow
 
 ```bash
-npm run dev       # server :4177 + Vite :5173 (proxies /api)
+# Local
+git add . && git commit -m "feat: new feature" && git push
+
+# Auto-deploy via GitHub Actions (on push to main)
+# Or manual:
+ssh root@server "cd /opt/parez && git pull && docker compose up -d --build"
 ```
 
-## Scripts
+### Zero-Downtime Deploy
+```bash
+docker compose up -d --build --remove-orphans
+docker image prune -f
+```
 
-| Script | Purpose |
-|--------|---------|
-| `npm start` | Run the production server (serves the built SPA + API) |
-| `npm run dev` | Dev mode: API with `--watch` + Vite dev server |
-| `npm run build` | Production build of `client/` → `client/dist/` |
-| `npm test` | All backend tests (`server/test/*.test.js`) |
-| `npm run typecheck` | TypeScript check of the frontend |
-| `npm run seed` / `npm run seed -- --demo` | Seed master data (optionally with removable demo data) |
+---
 
-## Data & configuration
+## 💾 Backup & Recovery
 
-- Database file: `data/parez.db` (created automatically). Override with `PAREZ_DB_PATH`.
-- Backups: `data/backups/`. Override root with `PAREZ_DATA_DIR`.
-- Other env vars: `PORT` (default 4177), `HOST`, `SESSION_TTL_HOURS`, `MAX_LOGIN_ATTEMPTS`,
-  `LOGIN_LOCK_MINUTES`, `BACKUP_WARN_DAYS`, `PAREZ_DEMO=1` (load demo data at boot).
-  A `.env` file in the project root is also read.
+### Automatic (Daily at 6:25 AM)
+- SQLite hot backup → AES-256 encryption → S3/Wasabi/B2 (GLACIER_IR)
+- Retention: 90 days local, 7 years S3 (lifecycle policy)
 
-## Integrity rules (the core of the system)
+### Manual Backup
+```bash
+/etc/cron.daily/parez-backup
+```
 
-- **All money is stored as integer minor units** (`amount_minor`, ×100) — never floats.
-- **IQD and USD are never summed** — every balance, total and report is grouped per currency.
-- **Single posting path**: every money movement is one `transactions` row → `ledger_entries`
-  (expenses and Ronaki payments link their detail rows to the same transaction — no double counting).
-- **No silent edits**: reversing/cancelling/refunding/editing a completed transaction requires a
-  reason and is written to the append-only audit log. Duplicates are blocked (`409 DUPLICATE_SUSPECTED`)
-  unless explicitly forced with a reason.
-- **Day locking**: once a day is closed, backdated writes are rejected until an admin reopens it
-  (reason required; the original closing is preserved inside the audit log).
-- **Backups**: consistent `VACUUM INTO` snapshots; restore requires typing the exact file name,
-  always writes a pre-restore safety copy first, and is audited inside the restored database.
+### Restore
+```bash
+# 1. Download from S3
+aws s3 cp s3://bucket/parez/2026-10-10.db.gpg /tmp/restore.db.gpg
 
-## Testing
+# 2. Decrypt
+gpg --decrypt --passphrase "$BACKUP_PASS" --output /tmp/restore.db /tmp/restore.db.gpg
+
+# 3. Replace DB
+docker compose stop app
+cp /tmp/restore.db /opt/parez/data/parez.db
+docker compose start app
+```
+
+---
+
+## 🛡️ Security
+
+- **UFW**: Only ports 22, 80, 443 open
+- **Fail2ban**: SSH brute-force protection (3 tries → 1h ban)
+- **SSH**: Root login disabled, password auth disabled, keys only
+- **SSL**: TLS 1.2/1.3, strong ciphers, HSTS, security headers
+- **Rate limiting**: API 10r/s, Login 5r/m
+- **Auto-updates**: Unattended security upgrades
+
+---
+
+## 📊 Monitoring
 
 ```bash
-npm test                          # 52 unit/integration tests
-node scripts/smoke.mjs            # full end-to-end smoke test (boots a real server on a temp DB)
+# App health
+curl https://parez.yourdomain.com/api/auth/me
+
+# Logs
+docker compose logs -f app
+docker compose logs -f nginx
+
+# Resources
+docker stats
+
+# Backups
+ls -la /tmp/parez-*.db.gpg
+aws s3 ls s3://your-bucket/parez/
 ```
 
-The smoke test covers: setup → login → CSRF → customers → transactions (duplicate + force override)
-→ expenses → ledger balances → Ronaki contracts/payments (overpayment blocked) → reports + CSV BOM →
-day locking → backup → demo data load/remove → audit → receipts.
+---
 
-## Layout
+## 💰 Cost Breakdown
 
-```
-server/src/
-  app.js, index.js       Express app + server entry (serves client/dist SPA)
-  config.js              env-driven config
-  db/                    schema.sql, migrations, seed + demo data
-  services/              ledger, transactions, ronaki, cash, closing, expenses,
-                         reports, receipts, backup, auth, audit, settings, wallets, ...
-  routes/                /api/* routers        middleware/  session, RBAC, CSRF, errors
-  lib/                   money, dates (Asia/Baghdad), ids, validation, errors
-server/test/             phase-based test suites
-client/src/
-  lib/                   api client, i18n (ku/ar/en + RTL), formatting
-  ui/kit.tsx             shared components
-  pages/                 Setup, Login, Dashboard, Transactions, FastPay, NassWallet,
-                         Ronaki, Customers, Expenses, Income, Reports, Daily Closing,
-                         Receipts, Audit, Users, Settings, Backup, Search
-```
+| Component | Monthly Cost |
+|-----------|--------------|
+| Hetzner CX22 (2 vCPU, 4GB, 40GB) | €4.50 |
+| Domain | ~€1 |
+| Wasabi B2 (100GB backups) | $0.50 |
+| **Total** | **~€5.50/mo** |
+
+---
+
+## 🆘 Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| App won't start | `docker compose logs app` |
+| SSL expired | `certbot renew --force-renewal && nginx -s reload` |
+| DB locked | `docker compose restart app` |
+| Backup failed | Check `/var/log/syslog` & AWS credentials |
+| High memory | `docker compose restart app` |
+
+---
+
+## 📝 License
+
+MIT License - See LICENSE file for details.
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repo
+2. Create feature branch
+3. Commit changes
+4. Push & open PR
+
+---
+
+**Built with ❤️ for Kurdistan's digital wallet operators.**

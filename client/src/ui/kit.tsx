@@ -563,6 +563,179 @@ export function DirectionMark({ direction, className }: { direction: string; cla
   );
 }
 
+/** Card type combobox for CardHouse — predefined types + custom input. */
+export function CardTypeSelect({
+  value, onChange,
+}: { value: string; onChange: (v: string) => void }) {
+  const { t } = useI18n();
+  const [isCustom, setIsCustom] = useState(false);
+  const [customValue, setCustomValue] = useState('');
+
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const v = e.target.value;
+    if (v === 'custom') {
+      setIsCustom(true);
+    } else {
+      setIsCustom(false);
+      onChange(v);
+    }
+  };
+
+  const handleCustomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCustomValue(e.target.value);
+    onChange(e.target.value);
+  };
+
+  return (
+    <div className="space-y-2">
+      <Select value={isCustom ? 'custom' : value} onChange={handleChange}>
+        <option value="pubg">{t('card_pubg')}</option>
+        <option value="steam">{t('card_steam')}</option>
+        <option value="apple">{t('card_apple')}</option>
+        <option value="google">{t('card_google')}</option>
+        <option value="telecom">{t('card_telecom')}</option>
+        <option value="custom">{t('card_custom')}</option>
+      </Select>
+      {isCustom && (
+        <Input
+          value={customValue}
+          onChange={handleCustomChange}
+          placeholder={t('card_type') + '...'}
+          required
+        />
+      )}
+    </div>
+  );
+}
+
+/** Commission rules editor — visual UI for commission.rules JSON array. */
+export function CommissionRulesEditor({
+  value, onChange,
+}: { value: string; onChange: (v: string) => void }) {
+  const { t } = useI18n();
+  const [rules, setRules] = useState<Array<{
+    service_code: string;
+    type_code: string;
+    currency: string;
+    percent: number;
+  }>>([]);
+
+  // Parse JSON on init/change
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(value || '[]');
+      if (Array.isArray(parsed)) setRules(parsed);
+    } catch {
+      setRules([]);
+    }
+  }, [value]);
+
+  // Stringify and notify parent on any change
+  useEffect(() => {
+    onChange(JSON.stringify(rules));
+  }, [rules, onChange]);
+
+  const addRule = () => {
+    setRules([...rules, { service_code: '', type_code: '', currency: '', percent: 1 }]);
+  };
+
+  const removeRule = (idx: number) => {
+    setRules(rules.filter((_, i) => i !== idx));
+  };
+
+  const updateRule = (idx: number, field: string, val: string | number) => {
+    setRules(rules.map((r, i) => i === idx ? { ...r, [field]: val } : r));
+  };
+
+  return (
+    <div className="space-y-2">
+      {rules.length === 0 && (
+        <p className="text-xs text-text-muted text-center py-2">{t('no_entries')}</p>
+      )}
+      {rules.map((r, i) => (
+        <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-border-color/10 bg-white p-2">
+          <button
+            type="button"
+            onClick={() => removeRule(i)}
+            className="flex-shrink-0 p-1 text-text-muted hover:text-danger"
+            aria-label={t('delete')}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+          <Select
+            value={r.service_code}
+            onChange={(e) => updateRule(i, 'service_code', e.target.value)}
+            className="flex-1 min-w-[100px]"
+            aria-label={t('service')}
+          >
+            <option value="">{t('service')}</option>
+            <option value="*">All services</option>
+            <option value="fastpay">FastPay</option>
+            <option value="nasswallet">NassWallet</option>
+            <option value="fib">FIB</option>
+            <option value="cardhouse">CardHouse</option>
+            <option value="ronaki">Ronaki</option>
+            <option value="other">Other</option>
+          </Select>
+          <Select
+            value={r.type_code}
+            onChange={(e) => updateRule(i, 'type_code', e.target.value)}
+            className="flex-1 min-w-[100px]"
+            aria-label={t('type')}
+          >
+            <option value="">{t('type')}</option>
+            <option value="*">All types</option>
+            <option value="deposit">Deposit</option>
+            <option value="withdrawal">Withdrawal</option>
+            <option value="transfer">Transfer</option>
+            <option value="payment_collection">Payment Collection</option>
+            <option value="customer_payment">Customer Payment</option>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+            <option value="commission">Commission</option>
+            <option value="cash_in">Cash In</option>
+            <option value="cash_out">Cash Out</option>
+            <option value="adjustment">Adjustment</option>
+            <option value="refund">Refund</option>
+            <option value="reversal">Reversal</option>
+            <option value="credit_sale">Credit Sale</option>
+          </Select>
+          <Select
+            value={r.currency}
+            onChange={(e) => updateRule(i, 'currency', e.target.value)}
+            className="flex-1 min-w-[80px]"
+            aria-label={t('currency')}
+          >
+            <option value="">{t('currency')}</option>
+            <option value="*">All currencies</option>
+            <option value="IQD">IQD</option>
+            <option value="USD">USD</option>
+          </Select>
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={r.percent}
+              onChange={(e) => updateRule(i, 'percent', parseFloat(e.target.value) || 0)}
+              className="w-20 text-center"
+              aria-label={t('commission')}
+            />
+            <span className="text-text-muted text-sm">%</span>
+          </div>
+        </div>
+      ))}
+      <Button variant="outline" size="sm" onClick={addRule} className="w-full">
+        ＋ {t('add_category')}
+      </Button>
+      <p className="text-[11px] text-text-muted">{t('income_note')}</p>
+    </div>
+  );
+}
+
 export function StatusBadge({ status }: { status: string }) {
   const map: Record<string, 'ok' | 'warn' | 'err' | 'gray' | 'blue'> = {
     completed: 'ok', pending: 'warn', cancelled: 'err', reversed: 'gray',
