@@ -92,6 +92,17 @@ auditRouter.get('/actions', async (req, res) => {
   res.json({ actions: rows.map((r) => r.action) });
 });
 
+// Admin: delete audit log entry
+auditRouter.delete('/:id', requirePermission('audit.manage'), (req, res) => {
+  const db = getDb();
+  const id = Number(req.params.id);
+  const row = db.prepare('SELECT * FROM audit_logs WHERE id = ?').get(id);
+  if (!row) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Audit log not found' } });
+  db.prepare('DELETE FROM audit_logs WHERE id = ?').run(id);
+  transaction((conn) => audit(conn, { user: req.user, action: 'AUDIT_DELETED', entity: 'audit_log', entityId: id, newValue: row, ip: req.ip }));
+  res.json({ ok: true });
+});
+
 // ---------------------------------------------------------------- Income & Commission
 export const incomeRouter = Router();
 incomeRouter.use(requirePermission('report.view'));

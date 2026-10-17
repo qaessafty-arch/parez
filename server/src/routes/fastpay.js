@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { requirePermission } from '../middleware/index.js';
 import { parse, z, zBizDate, zReference } from '../lib/validate.js';
-import { createTransaction, listTransactions, getTransaction } from '../services/transactions.js';
+import { createTransaction, listTransactions, getTransaction, deleteTransaction } from '../services/transactions.js';
 import { walletSummary, walletAccount } from '../services/wallets.js';
 import { createReceiptForTransaction } from '../services/receipts.js';
 import { resolveRange } from '../lib/dates.js';
@@ -81,6 +81,17 @@ router.post('/transactions', requirePermission('transaction.create'), async (req
   );
   const receiptRow = receipt === false ? null : await createReceiptForTransaction(saved.id, req.user, req.ip, { silentDuplicate: true });
   res.status(201).json({ transaction: await getTransaction(saved.id), receipt: receiptRow });
+});
+
+router.delete('/transactions/:id', requirePermission('transaction.delete'), (req, res) => {
+  const db = getDb();
+  const id = Number(req.params.id);
+  const txn = db.prepare('SELECT * FROM transactions WHERE id = ? AND service_code = ?').get(id, 'fastpay');
+  if (!txn) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Transaction not found' } });
+
+  const { deleteTransaction } = require('../services/transactions.js');
+  deleteTransaction(id, req.user, req.ip);
+  res.json({ ok: true });
 });
 
 export default router;

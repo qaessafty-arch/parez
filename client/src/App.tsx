@@ -11,6 +11,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Wallets from './pages/Wallets';
+import CardHouse from './pages/CardHouse';
+import Dealers from './pages/Dealers';
 import Ronaki from './pages/Ronaki';
 import Customers from './pages/Customers';
 import Expenses from './pages/Expenses';
@@ -135,6 +137,9 @@ export default function App() {
           <Route path="/transactions" element={<Guard perm="transaction.view"><Transactions /></Guard>} />
           <Route path="/fastpay" element={<Guard perm="transaction.view"><Wallets serviceCode="fastpay" /></Guard>} />
           <Route path="/nasswallet" element={<Guard perm="transaction.view"><Wallets serviceCode="nasswallet" /></Guard>} />
+          <Route path="/fib" element={<Guard perm="fib.view"><Wallets serviceCode="fib" /></Guard>} />
+          <Route path="/cardhouse" element={<Guard perm="cardhouse.view"><CardHouse /></Guard>} />
+          <Route path="/dealers" element={<Guard perm="transaction.view"><Dealers /></Guard>} />
           <Route path="/ronaki" element={<Guard perm="ronaki.view"><Ronaki /></Guard>} />
           <Route path="/customers" element={<Guard perm="customer.view"><Customers /></Guard>} />
           <Route path="/expenses" element={<Guard perm="expense.view"><Expenses /></Guard>} />

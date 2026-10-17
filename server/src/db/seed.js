@@ -22,7 +22,8 @@ const MASTER_ROLES = [
       'expense.view', 'expense.create', 'expense.edit',
       'report.view', 'report.export', 'receipt.print',
       'closing.view', 'closing.perform', 'closing.reopen',
-      'audit.view', 'user.manage', 'settings.manage', 'backup.manage', 'demo.remove',
+      'audit.view', 'audit.manage', 'user.manage', 'settings.manage', 'backup.manage', 'demo.remove',
+      'fib.view', 'fib.create', 'cardhouse.view', 'cardhouse.create',
     ],
   },
   {
@@ -35,6 +36,7 @@ const MASTER_ROLES = [
       'ronaki.view', 'ronaki.create', 'ronaki.payment',
       'expense.view', 'expense.create',
       'report.view', 'report.export', 'receipt.print', 'closing.view',
+      'fib.view', 'fib.create', 'cardhouse.view', 'cardhouse.create',
     ],
   },
 ];
@@ -63,15 +65,19 @@ const ACCOUNTS = [
   { code: 'CASH', name: 'Shop Cash', kind: 'cash', currency: 'IQD', opening: 0, sort: 1 },
   { code: 'FASTPAY', name: 'FastPay Account', kind: 'wallet', currency: 'IQD', opening: 0, sort: 2 },
   { code: 'NASSWALLET', name: 'NassWallet Account', kind: 'wallet', currency: 'IQD', opening: 0, sort: 3 },
-  { code: 'RONAKI', name: 'Ronaki Collection', kind: 'clearing', currency: 'IQD', opening: 0, sort: 4 },
-  { code: 'BANK', name: 'Bank Account', kind: 'bank', currency: 'IQD', opening: 0, sort: 5 },
+  { code: 'FIB', name: 'FIB Account', kind: 'wallet', currency: 'IQD', opening: 0, sort: 4 },
+  { code: 'CARDHOUSE', name: 'CardHouse Account', kind: 'wallet', currency: 'IQD', opening: 0, sort: 5 },
+  { code: 'RONAKI', name: 'Ronaki Collection', kind: 'clearing', currency: 'IQD', opening: 0, sort: 6 },
+  { code: 'BANK', name: 'Bank Account', kind: 'bank', currency: 'IQD', opening: 0, sort: 7 },
 ];
 
 const SERVICES = [
   { code: 'fastpay', name: 'FastPay', account: 'FASTPAY', sort: 1 },
   { code: 'nasswallet', name: 'NassWallet', account: 'NASSWALLET', sort: 2 },
-  { code: 'ronaki', name: 'Ronaki Project', account: 'RONAKI', sort: 3 },
-  { code: 'other', name: 'Other', account: 'CASH', sort: 4 },
+  { code: 'fib', name: 'FIB', account: 'FIB', sort: 3 },
+  { code: 'cardhouse', name: 'CardHouse', account: 'CARDHOUSE', sort: 4 },
+  { code: 'ronaki', name: 'Ronaki Project', account: 'RONAKI', sort: 5 },
+  { code: 'other', name: 'Other', account: 'CASH', sort: 6 },
 ];
 
 const TX_TYPES = [
@@ -95,6 +101,8 @@ const PAYMENT_METHODS = [
   { code: 'cash', name: 'Cash' },
   { code: 'fastpay', name: 'FastPay' },
   { code: 'nasswallet', name: 'NassWallet' },
+  { code: 'fib', name: 'FIB' },
+  { code: 'cardhouse', name: 'CardHouse' },
   { code: 'bank', name: 'Bank' },
   { code: 'credit', name: 'Credit (Owes)' },
   { code: 'other', name: 'Other' },

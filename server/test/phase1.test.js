@@ -111,8 +111,8 @@ test('seed: master data present and idempotent', async () => {
   });
   const a = await counts();
   assert.equal(a.cur, 2);
-  assert.equal(a.acc, 5);
-  assert.equal(a.svc, 4);
+  assert.equal(a.acc, 7);
+  assert.equal(a.svc, 6);
   assert.equal(a.roles, 2);
   const b = await counts();
   assert.deepEqual(a, b);

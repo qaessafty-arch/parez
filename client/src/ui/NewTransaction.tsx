@@ -11,7 +11,7 @@ import { useDraft } from '../lib/draft';
 import { useI18n } from '../lib/i18n';
 import { amountDisplay, parseAmount, todayISO, cls } from '../lib/format';
 import {
-  Alert, Button, Field, Input, Modal, Money, MoneyInput, Select, Textarea,
+  Alert, Button, CardTypeSelect, Field, Input, Modal, Money, MoneyInput, Select, Textarea,
 } from './kit';
 import { useSession } from '../App';
 
@@ -47,6 +47,9 @@ export default function NewTransaction({ onClose, onCreated, serviceCode, typeCo
     payment_method: 'cash',
     wallet_number: '',
     reference_no: '',
+    card_type: '',
+    wholesale_cost: '',
+    retail_price: '',
     description: '',
     biz_date: todayISO(),
     status: 'completed',
@@ -107,6 +110,9 @@ export default function NewTransaction({ onClose, onCreated, serviceCode, typeCo
       if (f.wallet_number) body.wallet_number = f.wallet_number;
       if (f.reference_no) body.reference_no = f.reference_no;
       if (f.description) body.description = f.description;
+      if (f.card_type && f.payment_method === 'cardhouse') body.card_type = f.card_type;
+      if (f.wholesale_cost && f.payment_method === 'cardhouse') body.wholesale_cost_minor = f.wholesale_cost.replace(/,/g, '');
+      if (f.retail_price && f.payment_method === 'cardhouse') body.retail_price_minor = f.retail_price.replace(/,/g, '');
       if (isAdjustment) body.direction = direction;
       if (force) { body.force = true; body.force_reason = forceReason.trim() || 'Confirmed by user'; }
 
@@ -225,6 +231,24 @@ export default function NewTransaction({ onClose, onCreated, serviceCode, typeCo
             {master.payment_methods.map((m) => <option key={m.code} value={m.code}>{m.name}</option>)}
           </Select>
         </Field>
+
+        {f.payment_method === 'cardhouse' && (
+          <Field label={t('card_type')}>
+            <CardTypeSelect value={f.card_type || 'pubg'} onChange={(v) => update({ card_type: v })} />
+          </Field>
+        )}
+
+        {f.payment_method === 'cardhouse' && (
+          <Field label={t('wholesale_cost') || 'Wholesale Cost'}>
+            <MoneyInput value={f.wholesale_cost} onChange={set('wholesale_cost')} placeholder={t('wholesale_cost') || '0'} />
+          </Field>
+        )}
+
+        {f.payment_method === 'cardhouse' && (
+          <Field label={t('retail_price') || 'Retail Price'}>
+            <MoneyInput value={f.retail_price} onChange={set('retail_price')} placeholder={t('retail_price') || '0'} />
+          </Field>
+        )}
 
         <Field label={t('status')}>
           <Select value={f.status} onChange={set('status')}>
