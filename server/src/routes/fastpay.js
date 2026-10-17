@@ -13,7 +13,7 @@ import { resolveRange } from '../lib/dates.js';
 const router = Router();
 router.use(requirePermission('transaction.view'));
 
-router.get('/summary', (req, res) => {
+router.get('/summary', async (req, res) => {
   const q = parse(
     z.object({
       range: z.string().default('today'),
@@ -23,15 +23,15 @@ router.get('/summary', (req, res) => {
     }),
     req.query
   );
-  res.json(walletSummary('fastpay', q));
+  res.json(await walletSummary('fastpay', q));
 });
 
-router.get('/account', (req, res) => {
-  const acct = walletAccount('fastpay');
+router.get('/account', async (req, res) => {
+  const acct = await walletAccount('fastpay');
   res.json({ account: acct });
 });
 
-router.get('/transactions', (req, res) => {
+router.get('/transactions', async (req, res) => {
   const q = parse(
     z.object({
       from: zBizDate.optional(), to: zBizDate.optional(), range: z.string().optional(),
@@ -48,10 +48,10 @@ router.get('/transactions', (req, res) => {
     const r = resolveRange(range);
     span = { from: r.from, to: r.to };
   }
-  res.json(listTransactions({ ...rest, ...span, service_code: 'fastpay' }));
+  res.json(await listTransactions({ ...rest, ...span, service_code: 'fastpay' }));
 });
 
-router.post('/transactions', requirePermission('transaction.create'), (req, res) => {
+router.post('/transactions', requirePermission('transaction.create'), async (req, res) => {
   const body = parse(
     z.object({
       type_code: z.string(),
@@ -72,15 +72,15 @@ router.post('/transactions', requirePermission('transaction.create'), (req, res)
     }),
     req.body
   );
-  const defaultAccount = walletAccount('fastpay');
+  const defaultAccount = await walletAccount('fastpay');
   const { receipt, ...input } = body;
-  const saved = createTransaction(
+  const saved = await createTransaction(
     { ...input, service_code: 'fastpay', account_id: input.account_id || defaultAccount.id },
     req.user,
     req.ip
   );
-  const receiptRow = receipt === false ? null : createReceiptForTransaction(saved.id, req.user, req.ip, { silentDuplicate: true });
-  res.status(201).json({ transaction: getTransaction(saved.id), receipt: receiptRow });
+  const receiptRow = receipt === false ? null : await createReceiptForTransaction(saved.id, req.user, req.ip, { silentDuplicate: true });
+  res.status(201).json({ transaction: await getTransaction(saved.id), receipt: receiptRow });
 });
 
 export default router;

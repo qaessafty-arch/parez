@@ -20,13 +20,22 @@ function loadEnvFile() {
 loadEnvFile();
 
 const DATA_DIR = process.env.PAREZ_DATA_DIR || path.join(ROOT, 'data');
-fs.mkdirSync(DATA_DIR, { recursive: true });
-fs.mkdirSync(path.join(DATA_DIR, 'backups'), { recursive: true });
+// Vercel's filesystem is read-only; the database lives in Turso there.
+const onVercel = Boolean(process.env.VERCEL);
+if (!onVercel) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(path.join(DATA_DIR, 'backups'), { recursive: true });
+}
+
+const dbPath = process.env.PAREZ_DB_PATH || path.join(DATA_DIR, 'parez.db');
 
 export const config = {
   port: Number(process.env.PORT || 4177),
   host: process.env.HOST || '127.0.0.1',
-  dbPath: process.env.PAREZ_DB_PATH || path.join(DATA_DIR, 'parez.db'),
+  dbPath,
+  // Turso (libSQL) URL in production; otherwise the local SQLite file.
+  dbUrl: process.env.TURSO_DATABASE_URL || `file:${dbPath}`,
+  dbAuthToken: process.env.TURSO_AUTH_TOKEN || undefined,
   dataDir: DATA_DIR,
   backupDir: path.join(DATA_DIR, 'backups'),
   clientDist: path.join(ROOT, 'client', 'dist'),

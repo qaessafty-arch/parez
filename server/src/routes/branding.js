@@ -1,24 +1,20 @@
 /**
  * Shop branding — logo upload and removal.
  *
- * The logo is stored under data/uploads and referenced from settings by
- * filename only. Uploads are validated by magic bytes rather than trusting
- * the extension or the browser-supplied Content-Type, and a random name is
- * used so a hostile filename cannot escape the directory or overwrite an
- * existing file.
+ * The logo is stored in the shop_logos table and referenced from settings by
+ * name. Uploads are validated by magic bytes rather than trusting the
+ * extension or the browser-supplied Content-Type, and a random name is used.
  */
-import fs from 'node:fs';
-import path from 'node:path';
 import { Router } from 'express';
-import { config } from '../config.js';
+import { one, run } from '../db/index.js';
 import { requirePermission } from '../middleware/index.js';
 import { getSetting, setSetting } from '../services/settings.js';
 import { validationError, notFound } from '../lib/errors.js';
 
 export const brandingRouter = Router();
 
-const UPLOAD_DIR = path.join(config.dataDir, 'uploads');
 const MAX_BYTES = 512 * 1024;
+const NAME_PATTERN = /^logo-[a-z0-9-]+\.(png|jpg|webp)$/;
 
 const SIGNATURES = [
   { ext: 'png', mime: 'image/png', test: (b) => b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 },
@@ -52,18 +48,10 @@ function readBody(req, limit) {
   });
 }
 
-function removeStoredLogo() {
-  const current = getSetting('shop.logo', '');
-  if (!current) return;
-  // Only ever unlink inside UPLOAD_DIR, whatever the setting claims.
-  const target = path.resolve(UPLOAD_DIR, current);
-  if (target.startsWith(path.resolve(UPLOAD_DIR) + path.sep)) {
-    try {
-      fs.unlinkSync(target);
-    } catch {
-      /* already gone */
-    }
-  }
+async function removeStoredLogo() {
+  const current = await getSetting('shop.logo', '');
+  if (!current || !NAME_PATTERN.test(current)) return;
+  await run('DELETE FROM shop_logos WHERE name = ?', current);
 }
 
 brandingRouter.post('/logo', requirePermission('settings.manage'), async (req, res) => {
@@ -81,31 +69,27 @@ brandingRouter.post('/logo', requirePermission('settings.manage'), async (req, r
     return res.status(415).json({ error: { code: 'BAD_IMAGE', message: 'Logo must be a PNG, JPEG or WebP image' } });
   }
 
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  removeStoredLogo();
+  await removeStoredLogo();
 
   const name = `logo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}.${sig.ext}`;
-  fs.writeFileSync(path.join(UPLOAD_DIR, name), body);
-  setSetting('shop.logo', name, req.user, req.ip);
+  await run('INSERT INTO shop_logos (name, mime, data) VALUES (?,?,?)', name, sig.mime, body.toString('base64'));
+  await setSetting('shop.logo', name, req.user, req.ip);
 
   res.json({ logo: `/api/branding/logo/${name}`, file_name: name, mime: sig.mime, bytes: body.length });
 });
 
-brandingRouter.get('/logo/:name', (req, res) => {
-  const name = path.basename(req.params.name);
-  const file = path.resolve(UPLOAD_DIR, name);
-  if (!file.startsWith(path.resolve(UPLOAD_DIR) + path.sep) || !fs.existsSync(file)) {
-    throw notFound('Logo');
-  }
-  const sig = SIGNATURES.find((s) => file.endsWith(`.${s.ext}`));
-  res.setHeader('Content-Type', sig ? sig.mime : 'application/octet-stream');
+brandingRouter.get('/logo/:name', async (req, res) => {
+  const name = req.params.name;
+  const row = NAME_PATTERN.test(name) ? await one('SELECT mime, data FROM shop_logos WHERE name = ?', name) : null;
+  if (!row) throw notFound('Logo');
+  res.setHeader('Content-Type', row.mime);
   res.setHeader('Cache-Control', 'no-cache');
-  fs.createReadStream(file).pipe(res);
+  res.send(Buffer.from(row.data, 'base64'));
 });
 
-brandingRouter.delete('/logo', requirePermission('settings.manage'), (req, res) => {
-  removeStoredLogo();
-  setSetting('shop.logo', '', req.user, req.ip);
+brandingRouter.delete('/logo', requirePermission('settings.manage'), async (req, res) => {
+  await removeStoredLogo();
+  await setSetting('shop.logo', '', req.user, req.ip);
   res.json({ ok: true, logo: '' });
 });
 

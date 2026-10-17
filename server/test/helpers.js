@@ -1,25 +1,32 @@
-/** Test helpers: isolated in-memory DB per test file, seeded master data, factories. */
-import { openDatabase, migrate, setDb, transaction } from '../src/db/index.js';
+/** Test helpers: isolated database per test file, seeded master data, factories. */
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { openDatabase, setClient, migrate, one, run, transaction } from '../src/db/index.js';
 import { seedMaster } from '../src/db/seed.js';
 import { mustToMinor } from '../src/lib/money.js';
 
 let counter = 0;
 
-export function freshDb() {
-  const conn = openDatabase(':memory:');
+/**
+ * A fresh, migrated, seeded database on a temporary file. A file (not :memory:)
+ * because each transaction opens its own connection.
+ */
+export async function freshDb() {
   counter++;
-  migrate(conn);
-  setDb(conn);
-  seedMaster(conn);
-  return conn;
+  const file = path.join(os.tmpdir(), `parez-test-${process.pid}-${counter}.db`);
+  fs.rmSync(file, { force: true });
+  fs.rmSync(`${file}-wal`, { force: true });
+  fs.rmSync(`${file}-shm`, { force: true });
+  setClient(openDatabase(`file:${file}`));
+  await migrate();
+  await seedMaster();
 }
 
-export function makeUser(db, { username = 'admin', roleCode = 'admin', fullName = 'Test Admin' } = {}) {
-  const role = db.prepare('SELECT id, permissions FROM roles WHERE code = ?').get(roleCode);
+export async function makeUser({ username = 'admin', roleCode = 'admin', fullName = 'Test Admin' } = {}) {
+  const role = await one('SELECT id, permissions FROM roles WHERE code = ?', roleCode);
   const scrypt = fakeHash();
-  const r = db
-    .prepare(`INSERT INTO users (role_id, username, full_name, password_hash) VALUES (?,?,?,?)`)
-    .run(role.id, username, fullName, scrypt);
+  const r = await run(`INSERT INTO users (role_id, username, full_name, password_hash) VALUES (?,?,?,?)`, role.id, username, fullName, scrypt);
   return {
     id: Number(r.lastInsertRowid),
     username,
@@ -34,22 +41,20 @@ function fakeHash() {
   return 'scrypt$1$1$1$dGVzdA$dGVzdA';
 }
 
-export function makeCustomer(db, name = 'Ahmed Ali', phone = '07501234567') {
-  const n = db.prepare('SELECT COUNT(*) AS c FROM customers').get().c + 1;
+export async function makeCustomer(name = 'Ahmed Ali', phone = '07501234567') {
+  const n = (await one('SELECT COUNT(*) AS c FROM customers')).c + 1;
   const y = new Date().getUTCFullYear();
-  const r = db
-    .prepare(`INSERT INTO customers (code, full_name, phone, created_by) VALUES (?,?,?,1)`)
-    .run(`CUS-${y}-${String(n).padStart(6, '0')}`, name, phone);
-  return db.prepare('SELECT * FROM customers WHERE id = ?').get(Number(r.lastInsertRowid));
+  const r = await run(`INSERT INTO customers (code, full_name, phone, created_by) VALUES (?,?,?,1)`, `CUS-${y}-${String(n).padStart(6, '0')}`, name, phone);
+  return one('SELECT * FROM customers WHERE id = ?', Number(r.lastInsertRowid));
 }
 
-export function svc(db, code) {
-  return db.prepare('SELECT * FROM services WHERE code = ?').get(code);
+export function svc(code) {
+  return one('SELECT * FROM services WHERE code = ?', code);
 }
-export function typeOf(db, code) {
-  return db.prepare('SELECT * FROM transaction_types WHERE code = ?').get(code);
+export function typeOf(code) {
+  return one('SELECT * FROM transaction_types WHERE code = ?', code);
 }
-export function account(db, code) {
-  return db.prepare('SELECT * FROM accounts WHERE code = ?').get(code);
+export function account(code) {
+  return one('SELECT * FROM accounts WHERE code = ?', code);
 }
 export { mustToMinor, transaction };

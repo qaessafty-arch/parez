@@ -12,17 +12,17 @@ const router = Router();
 
 router.use(requirePermission('ronaki.view'));
 
-router.get('/projects', (req, res) => res.json({ projects: listProjects() }));
+router.get('/projects', async (req, res) => res.json({ projects: await listProjects() }));
 
-router.post('/projects', requirePermission('ronaki.create'), (req, res) => {
+router.post('/projects', requirePermission('ronaki.create'), async (req, res) => {
   const body = parse(
     z.object({ code: z.string().trim().min(2).max(40), name: z.string().trim().min(2).max(80), location: z.string().max(120).optional() }),
     req.body
   );
-  res.status(201).json(createProject(body, req.user, req.ip));
+  res.status(201).json(await createProject(body, req.user, req.ip));
 });
 
-router.get('/contracts', (req, res) => {
+router.get('/contracts', async (req, res) => {
   const q = parse(
     z.object({
       q: z.string().optional().default(''),
@@ -33,7 +33,7 @@ router.get('/contracts', (req, res) => {
     }),
     req.query
   );
-  res.json(listContracts(q));
+  res.json(await listContracts(q));
 });
 
 const contractBody = z.object({
@@ -49,24 +49,24 @@ const contractBody = z.object({
   notes: z.string().trim().max(500).optional().default(''),
 });
 
-router.post('/contracts', requirePermission('ronaki.create'), (req, res) => {
+router.post('/contracts', requirePermission('ronaki.create'), async (req, res) => {
   const body = parse(contractBody, req.body);
-  res.status(201).json(createContract(body, req.user, req.ip));
+  res.status(201).json(await createContract(body, req.user, req.ip));
 });
 
-router.get('/contracts/:id', (req, res) => {
-  res.json(getContract(req.params.id));
+router.get('/contracts/:id', async (req, res) => {
+  res.json(await getContract(req.params.id));
 });
 
-router.patch('/contracts/:id', requirePermission('ronaki.edit'), (req, res) => {
+router.patch('/contracts/:id', requirePermission('ronaki.edit'), async (req, res) => {
   const body = parse(
     contractBody.partial().extend({ total_required: z.union([z.string(), z.number()]).optional() }),
     req.body
   );
-  res.json(updateContract(Number(req.params.id), body, req.user, req.ip));
+  res.json(await updateContract(Number(req.params.id), body, req.user, req.ip));
 });
 
-router.post('/contracts/:id/payments', requirePermission('ronaki.payment'), (req, res) => {
+router.post('/contracts/:id/payments', requirePermission('ronaki.payment'), async (req, res) => {
   const body = parse(
     z.object({
       amount: z.union([z.string(), z.number()]),
@@ -81,12 +81,12 @@ router.post('/contracts/:id/payments', requirePermission('ronaki.payment'), (req
     req.body
   );
   const { receipt, ...input } = body;
-  const result = addPayment({ ...input, contract_id: Number(req.params.id) }, req.user, req.ip);
-  const receiptRow = receipt === false ? null : createReceiptForTransaction(result.transaction_id, req.user, req.ip, { silentDuplicate: true });
+  const result = await addPayment({ ...input, contract_id: Number(req.params.id) }, req.user, req.ip);
+  const receiptRow = receipt === false ? null : await createReceiptForTransaction(result.transaction_id, req.user, req.ip, { silentDuplicate: true });
   res.status(201).json({ ...result, receipt: receiptRow });
 });
 
-router.get('/payments', (req, res) => {
+router.get('/payments', async (req, res) => {
   const q = parse(
     z.object({
       from: zBizDate.optional(), to: zBizDate.optional(),
@@ -95,10 +95,10 @@ router.get('/payments', (req, res) => {
     }),
     req.query
   );
-  res.json(ronakiReport(q));
+  res.json(await ronakiReport(q));
 });
 
-router.get('/report', requirePermission('report.view'), (req, res) => {
+router.get('/report', requirePermission('report.view'), async (req, res) => {
   const q = parse(
     z.object({
       from: zBizDate.optional(), to: zBizDate.optional(),
@@ -108,7 +108,7 @@ router.get('/report', requirePermission('report.view'), (req, res) => {
     }),
     req.query
   );
-  res.json(ronakiReport(q));
+  res.json(await ronakiReport(q));
 });
 
 export default router;

@@ -9,12 +9,12 @@ import { today } from '../lib/dates.js';
 export const cashRouter = Router();
 cashRouter.use(requirePermission('dashboard.view'));
 
-cashRouter.get('/snapshot', (req, res) => {
+cashRouter.get('/snapshot', async (req, res) => {
   const q = parse(z.object({ date: zBizDate.optional() }), req.query);
-  res.json(cashSnapshot(q.date || today()));
+  res.json(await cashSnapshot(q.date || today()));
 });
 
-cashRouter.get('/movements', (req, res) => {
+cashRouter.get('/movements', async (req, res) => {
   const q = parse(
     z.object({
       from: zBizDate.optional(), to: zBizDate.optional(),
@@ -22,23 +22,23 @@ cashRouter.get('/movements', (req, res) => {
     }),
     req.query
   );
-  res.json(cashMovements(q));
+  res.json(await cashMovements(q));
 });
 
-cashRouter.get('/balances', (req, res) => {
+cashRouter.get('/balances', async (req, res) => {
   const q = parse(z.object({ date: zBizDate.optional() }), req.query);
-  res.json({ balances: allBalances(q.date || null) });
+  res.json({ balances: await allBalances(q.date || null) });
 });
 
 export const closingRouter = Router();
 closingRouter.use(requirePermission('closing.view'));
 
-closingRouter.get('/preview', (req, res) => {
+closingRouter.get('/preview', async (req, res) => {
   const q = parse(z.object({ date: zBizDate.optional() }), req.query);
-  res.json(closingPreview(q.date || today()));
+  res.json(await closingPreview(q.date || today()));
 });
 
-closingRouter.get('/history', (req, res) => {
+closingRouter.get('/history', async (req, res) => {
   const q = parse(
     z.object({
       limit: z.coerce.number().int().min(1).max(365).optional().default(60),
@@ -46,10 +46,10 @@ closingRouter.get('/history', (req, res) => {
     }),
     req.query
   );
-  res.json(closingHistory(q));
+  res.json(await closingHistory(q));
 });
 
-closingRouter.post('/', requirePermission('closing.perform'), (req, res) => {
+closingRouter.post('/', requirePermission('closing.perform'), async (req, res) => {
   const body = parse(
     z.object({
       date: zBizDate.optional(),
@@ -58,13 +58,13 @@ closingRouter.post('/', requirePermission('closing.perform'), (req, res) => {
     }),
     req.body
   );
-  res.status(201).json(closeDay(body, req.user, req.ip));
+  res.status(201).json(await closeDay(body, req.user, req.ip));
 });
 
-closingRouter.post('/reopen', requirePermission('closing.reopen'), (req, res) => {
+closingRouter.post('/reopen', requirePermission('closing.reopen'), async (req, res) => {
   const body = parse(
     z.object({ date: zBizDate, reason: z.string().trim().min(3).max(300) }),
     req.body
   );
-  res.json(reopenDay(body, req.user, req.ip));
+  res.json(await reopenDay(body, req.user, req.ip));
 });

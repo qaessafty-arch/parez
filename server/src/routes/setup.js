@@ -1,17 +1,17 @@
 /** First-run setup: creates shop settings + initial admin account. */
 import { Router } from 'express';
-import { getDb, transaction } from '../db/index.js';
+import { all, one, run, transaction } from '../db/index.js';
 import { seedMaster } from '../db/seed.js';
 import { setupNeeded, hashPassword } from '../services/auth.js';
 import { audit } from '../services/audit.js';
 import { parse, z } from '../lib/validate.js';
-import { conflict, validationError, badRequest } from '../lib/errors.js';
+import { conflict, validationError } from '../lib/errors.js';
 import { config } from '../config.js';
 
 const router = Router();
 
-router.get('/status', (req, res) => {
-  res.json({ needsSetup: setupNeeded() });
+router.get('/status', async (req, res) => {
+  res.json({ needsSetup: await setupNeeded() });
 });
 
 const setupSchema = z.object({
@@ -27,34 +27,41 @@ const setupSchema = z.object({
   }),
 });
 
-router.post('/', (req, res) => {
-  const db = getDb();
-  if (!setupNeeded()) throw conflict('ALREADY_SETUP', 'Setup has already been completed');
+router.post('/', async (req, res) => {
+  if (!(await setupNeeded())) throw conflict('ALREADY_SETUP', 'Setup has already been completed');
   const data = parse(setupSchema, req.body);
 
-  const result = transaction((conn) => {
-    seedMaster(conn);
-    const role = conn.prepare(`SELECT id FROM roles WHERE code = 'admin'`).get();
+  const result = await transaction(async () => {
+    await seedMaster();
+    const role = await one(`SELECT id FROM roles WHERE code = 'admin'`);
     const uname = data.admin.username;
-    const exists = conn.prepare('SELECT id FROM users WHERE username = ? COLLATE NOCASE').get(uname);
+    const exists = await one('SELECT id FROM users WHERE username = ? COLLATE NOCASE', uname);
     if (exists) throw validationError('Username is already in use');
 
-    const r = conn
-      .prepare('INSERT INTO users (role_id, username, full_name, password_hash) VALUES (?,?,?,?)')
-      .run(role.id, uname, data.admin.full_name, hashPassword(data.admin.password));
+    const r = await run(
+      'INSERT INTO users (role_id, username, full_name, password_hash) VALUES (?,?,?,?)',
+      role.id,
+      uname,
+      data.admin.full_name,
+      hashPassword(data.admin.password)
+    );
     const userId = Number(r.lastInsertRowid);
 
     const set = (key, value) =>
-      conn.prepare(`INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(key, value);
-    set('shop.name', data.shop_name);
-    set('shop.address', data.address);
-    set('shop.phone', data.phone);
-    set('default.currency', data.currency);
-    set('default.language', data.language);
-    set('setup.completed', 'true');
+      run(
+        `INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+        key,
+        value
+      );
+    await set('shop.name', data.shop_name);
+    await set('shop.address', data.address);
+    await set('shop.phone', data.phone);
+    await set('default.currency', data.currency);
+    await set('default.language', data.language);
+    await set('setup.completed', 'true');
 
     const user = { id: userId, username: uname, full_name: data.admin.full_name };
-    audit(conn, {
+    await audit({
       user,
       action: 'SETUP_COMPLETED',
       entity: 'settings',
@@ -68,12 +75,13 @@ router.post('/', (req, res) => {
 });
 
 /** Setup status exposed on /api/meta for the client shell. */
-export function setupPublicInfo() {
+export async function setupPublicInfo() {
+  const value = async (key) => (await one(`SELECT value FROM settings WHERE key = ?`, key))?.value;
   return {
-    needsSetup: setupNeeded(),
-    shopName: getDb().prepare(`SELECT value FROM settings WHERE key='shop.name'`).get()?.value || 'Parez',
-    defaultLanguage: getDb().prepare(`SELECT value FROM settings WHERE key='default.language'`).get()?.value || 'ku',
-    defaultCurrency: getDb().prepare(`SELECT value FROM settings WHERE key='default.currency'`).get()?.value || 'IQD',
+    needsSetup: await setupNeeded(),
+    shopName: (await value('shop.name')) || 'Parez',
+    defaultLanguage: (await value('default.language')) || 'ku',
+    defaultCurrency: (await value('default.currency')) || 'IQD',
     backupWarnDays: config.backupWarnDays,
   };
 }

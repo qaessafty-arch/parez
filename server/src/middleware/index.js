@@ -32,11 +32,11 @@ export function clearCookie() {
 }
 
 /** Attach req.user when a valid session cookie is present. */
-export function sessionMiddleware(req, res, next) {
+export async function sessionMiddleware(req, res, next) {
   const token = parseCookies(req)[config.cookieName];
   req.sessionToken = token || null;
   try {
-    req.user = userFromToken(token) || null;
+    req.user = (await userFromToken(token)) || null;
   } catch {
     req.user = null;
   }

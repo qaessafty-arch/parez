@@ -6,7 +6,7 @@ import { createReceiptForTransaction, getReceipt, listReceipts, reprintReceipt }
 
 const router = Router();
 
-router.get('/', requirePermission('receipt.print'), (req, res) => {
+router.get('/', requirePermission('receipt.print'), async (req, res) => {
   const q = parse(
     z.object({
       q: z.string().optional().default(''),
@@ -17,19 +17,19 @@ router.get('/', requirePermission('receipt.print'), (req, res) => {
     }),
     req.query
   );
-  res.json(listReceipts(q));
+  res.json(await listReceipts(q));
 });
 
-router.get('/:id', requirePermission('receipt.print'), (req, res) => {
-  res.json(getReceipt(req.params.id));
+router.get('/:id', requirePermission('receipt.print'), async (req, res) => {
+  res.json(await getReceipt(req.params.id));
 });
 
-router.post('/:id/print', requirePermission('receipt.print'), (req, res) => {
-  res.json(reprintReceipt(req.params.id));
+router.post('/:id/print', requirePermission('receipt.print'), async (req, res) => {
+  res.json(await reprintReceipt(req.params.id));
 });
 
-router.post('/transaction/:txnId', requirePermission('receipt.print'), (req, res) => {
-  res.status(201).json(createReceiptForTransaction(Number(req.params.txnId), req.user, req.ip));
+router.post('/transaction/:txnId', requirePermission('receipt.print'), async (req, res) => {
+  res.status(201).json(await createReceiptForTransaction(Number(req.params.txnId), req.user, req.ip));
 });
 
 export default router;

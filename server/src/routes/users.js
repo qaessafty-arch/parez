@@ -7,11 +7,11 @@ import { parse, z } from '../lib/validate.js';
 const router = Router();
 router.use(requirePermission('user.manage'));
 
-router.get('/', (req, res) => {
-  res.json(listUsers());
+router.get('/', async (req, res) => {
+  res.json(await listUsers());
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const body = parse(
     z.object({
       username: z.string().trim().min(3).max(32),
@@ -21,10 +21,10 @@ router.post('/', (req, res) => {
     }),
     req.body
   );
-  res.status(201).json(createUser(body, req.user, req.ip));
+  res.status(201).json(await createUser(body, req.user, req.ip));
 });
 
-router.patch('/:id', (req, res) => {
+router.patch('/:id', async (req, res) => {
   const id = Number(req.params.id);
   const body = parse(
     z.object({
@@ -35,7 +35,7 @@ router.patch('/:id', (req, res) => {
     }),
     req.body
   );
-  res.json(updateUser(id, body, req.user, req.ip));
+  res.json(await updateUser(id, body, req.user, req.ip));
 });
 
 export default router;

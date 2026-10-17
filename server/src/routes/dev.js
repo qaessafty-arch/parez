@@ -9,7 +9,7 @@
 import os from 'node:os';
 import { Router } from 'express';
 import { config } from '../config.js';
-import { getDb } from '../db/index.js';
+import { all, one } from '../db/index.js';
 import { requirePermission } from '../middleware/index.js';
 
 export const devRouter = Router();
@@ -19,11 +19,10 @@ devRouter.use((req, res, next) => {
   requirePermission('settings.manage')(req, res, next);
 });
 
-devRouter.get('/info', (req, res) => {
-  const db = getDb();
-  const count = (t) => {
+devRouter.get('/info', async (req, res) => {
+  const count = async (t) => {
     try {
-      return db.prepare(`SELECT COUNT(*) AS c FROM ${t}`).get().c;
+      return (await one(`SELECT COUNT(*) AS c FROM ${t}`)).c;
     } catch {
       return null;
     }
@@ -37,14 +36,14 @@ devRouter.get('/info', (req, res) => {
     backup_dir: config.backupDir,
     session_ttl_hours: config.sessionTtlHours,
     counts: {
-      users: count('users'),
-      customers: count('customers'),
-      transactions: count('transactions'),
-      ledger_entries: count('ledger_entries'),
-      expenses: count('expenses'),
-      ronaki_contracts: count('ronaki_contracts'),
-      receipts: count('receipts'),
-      audit_logs: count('audit_logs'),
+      users: await count('users'),
+      customers: await count('customers'),
+      transactions: await count('transactions'),
+      ledger_entries: await count('ledger_entries'),
+      expenses: await count('expenses'),
+      ronaki_contracts: await count('ronaki_contracts'),
+      receipts: await count('receipts'),
+      audit_logs: await count('audit_logs'),
     },
   });
 });
@@ -53,8 +52,7 @@ devRouter.get('/info', (req, res) => {
  * Referential-integrity check. Reports rows that point at a user that no
  * longer exists — the one real hazard when accounts are deleted.
  */
-devRouter.get('/orphans', (req, res) => {
-  const db = getDb();
+devRouter.get('/orphans', async (req, res) => {
   const checks = [
     ['transactions', 'created_by'],
     ['customers', 'created_by'],
@@ -66,13 +64,13 @@ devRouter.get('/orphans', (req, res) => {
   const orphans = [];
   for (const [table, col] of checks) {
     try {
-      const n = db
-        .prepare(
+      const n = (
+        await one(
           `SELECT COUNT(*) AS c FROM ${table} t
            LEFT JOIN users u ON u.id = t.${col}
            WHERE t.${col} IS NOT NULL AND u.id IS NULL`
         )
-        .get().c;
+      ).c;
       if (n > 0) orphans.push({ table, column: col, count: n });
     } catch {
       /* table not present in this schema */

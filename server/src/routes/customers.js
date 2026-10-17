@@ -15,30 +15,30 @@ const customerBody = z.object({
   notes: z.string().trim().max(1000).optional().default(''),
 });
 
-router.get('/', requirePermission('customer.view'), (req, res) => {
+router.get('/', requirePermission('customer.view'), async (req, res) => {
   const q = parse(
     z.object({ q: z.string().optional().default(''), limit: z.coerce.number().int().min(1).max(100).optional().default(25), offset: z.coerce.number().int().min(0).optional().default(0) }),
     req.query
   );
-  res.json(searchCustomers(q));
+  res.json(await searchCustomers(q));
 });
 
-router.post('/', requirePermission('customer.create'), (req, res) => {
+router.post('/', requirePermission('customer.create'), async (req, res) => {
   const body = parse(customerBody, req.body);
-  res.status(201).json(createCustomer(body, req.user, req.ip));
+  res.status(201).json(await createCustomer(body, req.user, req.ip));
 });
 
-router.get('/:id', requirePermission('customer.view'), (req, res) => {
-  res.json(getCustomer(Number(req.params.id)));
+router.get('/:id', requirePermission('customer.view'), async (req, res) => {
+  res.json(await getCustomer(Number(req.params.id)));
 });
 
-router.get('/:id/history', requirePermission('customer.view'), (req, res) => {
-  res.json(customerHistory(Number(req.params.id)));
+router.get('/:id/history', requirePermission('customer.view'), async (req, res) => {
+  res.json(await customerHistory(Number(req.params.id)));
 });
 
-router.patch('/:id', requirePermission('customer.edit'), (req, res) => {
+router.patch('/:id', requirePermission('customer.edit'), async (req, res) => {
   const body = parse(customerBody.partial(), req.body);
-  res.json(updateCustomer(Number(req.params.id), body, req.user, req.ip));
+  res.json(await updateCustomer(Number(req.params.id), body, req.user, req.ip));
 });
 
 export default router;

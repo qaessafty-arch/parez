@@ -1,25 +1,27 @@
 /** Settings — shop configuration stored in DB, never hard-coded in components. */
-import { getDb, transaction } from '../db/index.js';
+import { all, one, run, transaction } from '../db/index.js';
 import { nowIso } from '../lib/dates.js';
 import { validationError } from '../lib/errors.js';
 import { audit } from './audit.js';
 
-export function getSetting(key, fallback = null) {
-  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key);
+export async function getSetting(key, fallback = null) {
+  const row = await one('SELECT value FROM settings WHERE key = ?', key);
   return row ? row.value : fallback;
 }
 
-export function setSetting(key, value, user = null, ip = null, { audited = true } = {}) {
-  transaction((conn) => {
-    const before = conn.prepare('SELECT value FROM settings WHERE key = ?').get(key);
-    conn
-      .prepare(
-        `INSERT INTO settings (key, value, updated_at, updated_by) VALUES (?,?,?,?)
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, updated_by = excluded.updated_by`
-      )
-      .run(key, String(value), nowIso(), user ? user.id : null);
+export async function setSetting(key, value, user = null, ip = null, { audited = true } = {}) {
+  await transaction(async () => {
+    const before = await one('SELECT value FROM settings WHERE key = ?', key);
+    await run(
+      `INSERT INTO settings (key, value, updated_at, updated_by) VALUES (?,?,?,?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
+      key,
+      String(value),
+      nowIso(),
+      user ? user.id : null
+    );
     if (audited && user) {
-      audit(conn, {
+      await audit({
         user,
         action: 'SETTINGS_CHANGED',
         entity: 'settings',
@@ -32,8 +34,8 @@ export function setSetting(key, value, user = null, ip = null, { audited = true 
   });
 }
 
-export function listSettings() {
-  const rows = getDb().prepare('SELECT key, value, updated_at FROM settings ORDER BY key').all();
+export async function listSettings() {
+  const rows = await all('SELECT key, value, updated_at FROM settings ORDER BY key');
   return Object.fromEntries(rows.map((r) => [r.key, r.value]));
 }
 
@@ -43,7 +45,7 @@ const EDITABLE = new Set([
   'default.currency', 'default.language', 'tax.rate', 'commission.rules', 'backup.warn_days',
 ]);
 
-export function updateSettings(patch, user, ip) {
+export async function updateSettings(patch, user, ip) {
   const values = {};
   for (const [key, value] of Object.entries(patch)) {
     if (!EDITABLE.has(key)) throw validationError(`Setting not editable: ${key}`);
@@ -77,25 +79,27 @@ export function updateSettings(patch, user, ip) {
     }
     values['commission.rules'] = JSON.stringify(rules);
   }
-  transaction(() => {
-    for (const [k, v] of Object.entries(values)) setSetting(k, v, user, ip);
+  await transaction(async () => {
+    for (const [k, v] of Object.entries(values)) await setSetting(k, v, user, ip);
   });
-  return Object.fromEntries(Object.keys(values).map((k) => [k, getSetting(k)]));
+  const out = {};
+  for (const k of Object.keys(values)) out[k] = await getSetting(k);
+  return out;
 }
 
-export function shopInfo() {
+export async function shopInfo() {
   return {
-    name: getSetting('shop.name', 'Parez'),
-    address: getSetting('shop.address', ''),
-    phone: getSetting('shop.phone', ''),
-    logo: getSetting('shop.logo', ''),
-    receipt_footer: getSetting('receipt.footer', ''),
-    receipt_prefix: getSetting('receipt.prefix', 'PRZ'),
-    default_currency: getSetting('default.currency', 'IQD'),
-    default_language: getSetting('default.language', 'ku'),
-    tax_rate: getSetting('tax.rate', '0'),
-    commission_rules: getSetting('commission.rules', '[]'),
-    backup_last_at: getSetting('backup.last_at', ''),
-    setup_completed: getSetting('setup.completed', 'false') === 'true',
+    name: await getSetting('shop.name', 'Parez'),
+    address: await getSetting('shop.address', ''),
+    phone: await getSetting('shop.phone', ''),
+    logo: await getSetting('shop.logo', ''),
+    receipt_footer: await getSetting('receipt.footer', ''),
+    receipt_prefix: await getSetting('receipt.prefix', 'PRZ'),
+    default_currency: await getSetting('default.currency', 'IQD'),
+    default_language: await getSetting('default.language', 'ku'),
+    tax_rate: await getSetting('tax.rate', '0'),
+    commission_rules: await getSetting('commission.rules', '[]'),
+    backup_last_at: await getSetting('backup.last_at', ''),
+    setup_completed: (await getSetting('setup.completed', 'false')) === 'true',
   };
 }
