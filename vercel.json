@@ -1,4 +1,7 @@
 {
+  "regions": [
+    "arn1"
+  ],
   "buildCommand": "npm run build",
   "outputDirectory": "client/dist",
   "functions": {
@@ -7,6 +10,9 @@
     }
   },
   "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
