@@ -2,7 +2,7 @@
  * Audit — every sensitive action is recorded with old/new values and reason.
  * The audit log is append-only: no update or delete APIs exist.
  */
-import { getDb } from '../db/index.js';
+import { all, one, run } from '../db/index.js';
 import { nowIso } from '../lib/dates.js';
 
 export const AUDIT_ACTIONS = [
@@ -24,8 +24,7 @@ export const AUDIT_ACTIONS = [
  * Write an audit entry. Never throws into the caller's flow for logging issues
  * (but failures are surfaced in dev to avoid silent gaps).
  */
-export function audit(conn, entry) {
-  const db = conn || getDb();
+export async function audit(entry) {
   const {
     user = null,
     action,
@@ -37,10 +36,9 @@ export function audit(conn, entry) {
     ip = null,
   } = entry;
   if (!action) throw new Error('audit: action is required');
-  db.prepare(
+  await run(
     `INSERT INTO audit_logs (user_id, user_name, action, entity, entity_id, old_value, new_value, reason, ip, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`
-  ).run(
+     VALUES (?,?,?,?,?,?,?,?,?,?)`,
     user ? user.id : null,
     user ? user.full_name || user.username : 'system',
     action,
@@ -54,8 +52,7 @@ export function audit(conn, entry) {
   );
 }
 
-export function listAudit({ from = null, to = null, action = null, entity = null, search = null, limit = 100, offset = 0 } = {}) {
-  const db = getDb();
+export async function listAudit({ from = null, to = null, action = null, entity = null, search = null, limit = 100, offset = 0 } = {}) {
   const where = [];
   const params = [];
   if (from) { where.push('created_at >= ?'); params.push(`${from}T00:00:00Z`); }
@@ -68,9 +65,12 @@ export function listAudit({ from = null, to = null, action = null, entity = null
     params.push(like, like, like, like, like);
   }
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const total = db.prepare(`SELECT COUNT(*) AS c FROM audit_logs ${clause}`).get(...params).c;
-  const rows = db
-    .prepare(`SELECT * FROM audit_logs ${clause} ORDER BY id DESC LIMIT ? OFFSET ?`)
-    .all(...params, Math.min(limit, 500), offset);
+  const total = (await one(`SELECT COUNT(*) AS c FROM audit_logs ${clause}`, ...params)).c;
+  const rows = await all(
+    `SELECT * FROM audit_logs ${clause} ORDER BY id DESC LIMIT ? OFFSET ?`,
+    ...params,
+    Math.min(limit, 500),
+    offset
+  );
   return { total, rows };
 }

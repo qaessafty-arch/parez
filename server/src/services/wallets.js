@@ -1,46 +1,44 @@
 /** Wallet module summaries shared by FastPay and NassWallet. */
-import { getDb } from '../db/index.js';
+import { all, one } from '../db/index.js';
 import { resolveRange } from '../lib/dates.js';
 import { listTransactions, rangeSummary } from './transactions.js';
 import { accountBalance } from './ledger.js';
-import { getSetting } from './settings.js';
 
-export function serviceOf(code) {
-  const svc = getDb().prepare('SELECT * FROM services WHERE code = ?').get(code);
-  return svc;
+export async function serviceOf(code) {
+  return one('SELECT * FROM services WHERE code = ?', code);
 }
 
 /**
  * Full module summary: today/period volume, balance, commission, recent activity.
  * Every figure is grouped per currency.
  */
-export function walletSummary(serviceCode, { range = 'today', from, to, currency } = {}) {
-  const svc = serviceOf(serviceCode);
+export async function walletSummary(serviceCode, { range = 'today', from, to, currency } = {}) {
+  const svc = await serviceOf(serviceCode);
   if (!svc) return null;
   const span = from && to ? { from, to } : resolveRange(range);
 
-  const summaryRows = rangeSummary(span.from, span.to, { service_code: serviceCode, currency });
-  const lifetime = rangeSummary('2000-01-01', '2999-12-31', { service_code: serviceCode, currency });
+  const summaryRows = await rangeSummary(span.from, span.to, { service_code: serviceCode, currency });
+  const lifetime = await rangeSummary('2000-01-01', '2999-12-31', { service_code: serviceCode, currency });
 
   const balances = [];
   if (svc.account_id) {
-    const acct = getDb().prepare('SELECT * FROM accounts WHERE id = ?').get(svc.account_id);
+    const acct = await one('SELECT * FROM accounts WHERE id = ?', svc.account_id);
     if (acct) {
-      const curs = currency ? [currency] : distinctCurrencies(svc.account_id);
+      const curs = currency ? [currency] : await distinctCurrencies(svc.account_id);
       for (const c of curs) {
         balances.push({
           account_id: acct.id,
           account_code: acct.code,
           account_name: acct.name,
           currency: c,
-          balance_minor: accountBalance(acct.id, c),
+          balance_minor: await accountBalance(acct.id, c),
           opening_balance_minor: acct.currency === c ? acct.opening_balance_minor : 0,
         });
       }
     }
   }
 
-  const recent = listTransactions({ service_code: serviceCode, from: span.from, to: span.to, limit: 10 });
+  const recent = await listTransactions({ service_code: serviceCode, from: span.from, to: span.to, limit: 10 });
 
   return {
     service: { id: svc.id, code: svc.code, name: svc.name },
@@ -68,19 +66,17 @@ function sanitize(r) {
   };
 }
 
-function distinctCurrencies(accountId) {
-  const rows = getDb()
-    .prepare(`SELECT DISTINCT currency FROM ledger_entries WHERE account_id = ?`)
-    .all(accountId);
-  const def = getDb().prepare('SELECT currency FROM accounts WHERE id = ?').get(accountId);
+async function distinctCurrencies(accountId) {
+  const rows = await all(`SELECT DISTINCT currency FROM ledger_entries WHERE account_id = ?`, accountId);
+  const def = await one('SELECT currency FROM accounts WHERE id = ?', accountId);
   const set = new Set(rows.map((r) => r.currency));
   if (def) set.add(def.currency);
   return [...set];
 }
 
 /** Wallet default account code (used by the create forms). */
-export function walletAccount(serviceCode) {
-  const svc = serviceOf(serviceCode);
+export async function walletAccount(serviceCode) {
+  const svc = await serviceOf(serviceCode);
   if (!svc || !svc.account_id) return null;
-  return getDb().prepare('SELECT * FROM accounts WHERE id = ?').get(svc.account_id);
+  return one('SELECT * FROM accounts WHERE id = ?', svc.account_id);
 }

@@ -1,4 +1,5 @@
 /** Express application assembly. */
+import 'express-async-errors';
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,6 +11,7 @@ import {
   errorHandler,
 } from './middleware/index.js';
 import apiRouter from './routes/index.js';
+import { ready } from './db/index.js';
 
 export function createApp() {
   const app = express();
@@ -19,6 +21,15 @@ export function createApp() {
   app.use(securityHeaders);
   app.use(express.json({ limit: '1mb' }));
   app.use(csrfGuard);
+  // Run migrations once per process before the first request touches the database.
+  app.use(async (req, res, next) => {
+    try {
+      await ready();
+      next();
+    } catch (e) {
+      next(e);
+    }
+  });
   app.use(sessionMiddleware);
 
   app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));

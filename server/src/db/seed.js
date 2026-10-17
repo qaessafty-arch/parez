@@ -4,7 +4,7 @@
  *   node server/src/db/seed.js           # master data only
  *   node server/src/db/seed.js --demo    # master data + removable demo data
  */
-import { getDb, transaction } from './index.js';
+import { batch, one, run, transaction, ready, closeDb } from './index.js';
 import { seedDemo } from './seedDemo.js';
 import { config } from '../config.js';
 import { hashPassword } from '../services/auth.js';
@@ -112,93 +112,105 @@ const EXPENSE_CATEGORIES = [
   { code: 'other', name: 'Other', sort: 9 },
 ];
 
-export function seedMaster(db = getDb()) {
-  transaction(() => {
-    for (const c of CURRENCIES) {
-      db.prepare(
-        `INSERT INTO currencies (code, name, symbol, decimals, sort_order) VALUES (?,?,?,?,?)
-         ON CONFLICT(code) DO NOTHING`
-      ).run(c.code, c.name, c.symbol, c.decimals, c.sort);
-    }
-    for (const [key, value] of Object.entries(MASTER_SETTINGS)) {
-      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING').run(key, value);
-    }
-    for (const r of MASTER_ROLES) {
-      db.prepare(
-        `INSERT INTO roles (code, name, permissions, is_system) VALUES (?,?,?,?)
-         ON CONFLICT(code) DO UPDATE SET name = excluded.name, permissions = excluded.permissions`
-      ).run(r.code, r.name, JSON.stringify(r.permissions), r.is_system);
-    }
-    for (const a of ACCOUNTS) {
-      db.prepare(
-        `INSERT INTO accounts (code, name, kind, currency, opening_balance_minor, sort_order)
-         VALUES (?,?,?,?,?,?) ON CONFLICT(code) DO NOTHING`
-      ).run(a.code, a.name, a.kind, a.currency, a.opening, a.sort);
-    }
-    for (const s of SERVICES) {
-      const acc = db.prepare('SELECT id FROM accounts WHERE code = ?').get(s.account);
-      db.prepare(
-        `INSERT INTO services (code, name, account_id, sort_order) VALUES (?,?,?,?)
-         ON CONFLICT(code) DO UPDATE SET name = excluded.name, account_id = excluded.account_id`
-      ).run(s.code, s.name, acc.id, s.sort);
-    }
-    for (const t of TX_TYPES) {
-      db.prepare(
-        `INSERT INTO transaction_types (code, name, direction, is_system, sort_order) VALUES (?,?,?,1,?)
-         ON CONFLICT(code) DO UPDATE SET name = excluded.name, direction = excluded.direction`
-      ).run(t.code, t.name, t.direction, t.sort);
-    }
-    for (const p of PAYMENT_METHODS) {
-      db.prepare(
-        `INSERT INTO payment_methods (code, name) VALUES (?,?) ON CONFLICT(code) DO UPDATE SET name = excluded.name`
-      ).run(p.code, p.name);
-    }
-    for (const e of EXPENSE_CATEGORIES) {
-      db.prepare(
-        `INSERT INTO expense_categories (code, name, is_system, sort_order) VALUES (?,?,1,?)
-         ON CONFLICT(code) DO UPDATE SET name = excluded.name`
-      ).run(e.code, e.name, e.sort);
-    }
-    db.prepare(
-      `INSERT INTO ronaki_projects (code, name, location) VALUES (?,?,?)
-       ON CONFLICT(code) DO NOTHING`
-    ).run('ronaki-akre', 'Ronaki Project — Akre', 'Akre');
+/** Idempotent master data, applied as one atomic batch (one round trip). */
+export async function seedMaster() {
+  const stmts = [];
+  const add = (sql, ...args) => stmts.push({ sql, args });
 
-    // Dev account (only in development with env var)
-    if (config.devAccount?.enabled) {
-      const adminRole = db.prepare('SELECT id FROM roles WHERE code = ?').get('admin');
-      if (adminRole) {
-        const exists = db.prepare('SELECT id FROM users WHERE username = ?').get(config.devAccount.username);
-        if (!exists) {
-          const hash = hashPassword(config.devAccount.password);
-          db.prepare(
-            `INSERT INTO users (role_id, username, full_name, password_hash, is_active) VALUES (?,?,?,?,1)`
-          ).run(adminRole.id, config.devAccount.username, config.devAccount.fullName, hash);
-        }
-      }
+  for (const c of CURRENCIES) {
+    add(
+      `INSERT INTO currencies (code, name, symbol, decimals, sort_order) VALUES (?,?,?,?,?)
+       ON CONFLICT(code) DO NOTHING`,
+      c.code, c.name, c.symbol, c.decimals, c.sort
+    );
+  }
+  for (const [key, value] of Object.entries(MASTER_SETTINGS)) {
+    add('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING', key, value);
+  }
+  for (const r of MASTER_ROLES) {
+    add(
+      `INSERT INTO roles (code, name, permissions, is_system) VALUES (?,?,?,?)
+       ON CONFLICT(code) DO UPDATE SET name = excluded.name, permissions = excluded.permissions`,
+      r.code, r.name, JSON.stringify(r.permissions), r.is_system
+    );
+  }
+  for (const a of ACCOUNTS) {
+    add(
+      `INSERT INTO accounts (code, name, kind, currency, opening_balance_minor, sort_order)
+       VALUES (?,?,?,?,?,?) ON CONFLICT(code) DO NOTHING`,
+      a.code, a.name, a.kind, a.currency, a.opening, a.sort
+    );
+  }
+  for (const s of SERVICES) {
+    add(
+      `INSERT INTO services (code, name, account_id, sort_order)
+       VALUES (?, ?, (SELECT id FROM accounts WHERE code = ?), ?)
+       ON CONFLICT(code) DO UPDATE SET name = excluded.name, account_id = excluded.account_id`,
+      s.code, s.name, s.account, s.sort
+    );
+  }
+  for (const t of TX_TYPES) {
+    add(
+      `INSERT INTO transaction_types (code, name, direction, is_system, sort_order) VALUES (?,?,?,1,?)
+       ON CONFLICT(code) DO UPDATE SET name = excluded.name, direction = excluded.direction`,
+      t.code, t.name, t.direction, t.sort
+    );
+  }
+  for (const p of PAYMENT_METHODS) {
+    add(
+      'INSERT INTO payment_methods (code, name) VALUES (?,?) ON CONFLICT(code) DO UPDATE SET name = excluded.name',
+      p.code, p.name
+    );
+  }
+  for (const e of EXPENSE_CATEGORIES) {
+    add(
+      `INSERT INTO expense_categories (code, name, is_system, sort_order) VALUES (?,?,1,?)
+       ON CONFLICT(code) DO UPDATE SET name = excluded.name`,
+      e.code, e.name, e.sort
+    );
+  }
+  add(
+    `INSERT INTO ronaki_projects (code, name, location) VALUES (?,?,?) ON CONFLICT(code) DO NOTHING`,
+    'ronaki-akre', 'Ronaki Project — Akre', 'Akre'
+  );
+
+  // Dev account (only in development with env var)
+  if (config.devAccount?.enabled) {
+    const exists = await one('SELECT id FROM users WHERE username = ?', config.devAccount.username);
+    if (!exists) {
+      add(
+        `INSERT INTO users (role_id, username, full_name, password_hash, is_active)
+         SELECT id, ?, ?, ?, 1 FROM roles WHERE code = 'admin'`,
+        config.devAccount.username,
+        config.devAccount.fullName,
+        hashPassword(config.devAccount.password)
+      );
     }
-  });
+  }
+
+  await batch(stmts);
 }
 
-export function clearDemoData() {
-  transaction(() => {
-    const db = getDb();
+export async function clearDemoData() {
+  await transaction(async () => {
     // Order matters for FK integrity: children first.
-    db.exec(`DELETE FROM ledger_entries WHERE txn_id IN (SELECT id FROM transactions WHERE is_demo = 1)`);
-    db.exec(`DELETE FROM receipts WHERE is_demo = 1`);
-    db.exec(`DELETE FROM ronaki_payments WHERE is_demo = 1`);
-    db.exec(`DELETE FROM ronaki_contracts WHERE is_demo = 1`);
-    db.exec(`DELETE FROM expenses WHERE txn_id IN (SELECT id FROM transactions WHERE is_demo = 1)`);
-    db.exec(`DELETE FROM transactions WHERE is_demo = 1`);
-    db.exec(`DELETE FROM customers WHERE is_demo = 1`);
-    db.prepare(`UPDATE settings SET value = '0' WHERE key = 'demo.data_loaded'`).run();
+    await run(`DELETE FROM ledger_entries WHERE txn_id IN (SELECT id FROM transactions WHERE is_demo = 1)`);
+    await run(`DELETE FROM receipts WHERE is_demo = 1`);
+    await run(`DELETE FROM ronaki_payments WHERE is_demo = 1`);
+    await run(`DELETE FROM ronaki_contracts WHERE is_demo = 1`);
+    await run(`DELETE FROM expenses WHERE txn_id IN (SELECT id FROM transactions WHERE is_demo = 1)`);
+    await run(`DELETE FROM transactions WHERE is_demo = 1`);
+    await run(`DELETE FROM customers WHERE is_demo = 1`);
+    await run(`UPDATE settings SET value = '0' WHERE key = 'demo.data_loaded'`);
   });
 }
 
 const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop());
 if (isMain) {
   const demo = process.argv.includes('--demo');
-  seedMaster();
-  if (demo) seedDemo();
+  await ready();
+  await seedMaster();
+  if (demo) await seedDemo();
   console.log(`Seed complete${demo ? ' (with demo data)' : ''}.`);
+  await closeDb();
 }

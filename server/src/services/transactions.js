@@ -9,7 +9,7 @@
  *   - IDs are unique (TX-YYYY-NNNNNN) and allocated inside the DB transaction
  *   - money is integer minor units; currencies are never mixed in totals
  */
-import { getDb, transaction } from '../db/index.js';
+import { all, one, run, transaction } from '../db/index.js';
 import { nextTxNumber } from '../lib/ids.js';
 import { today, nowTime, nowIso } from '../lib/dates.js';
 import { netOf, sumMinor, toMinor } from '../lib/money.js';
@@ -23,26 +23,26 @@ import { assertDayOpen } from './dayLock.js';
 // Helpers
 // ------------------------------------------------------------------
 
-export function getServiceById(id) {
-  return getDb().prepare('SELECT * FROM services WHERE id = ?').get(id);
+export async function getServiceById(id) {
+  return one('SELECT * FROM services WHERE id = ?', id);
 }
-export function getServiceByCode(code) {
-  return getDb().prepare('SELECT * FROM services WHERE code = ?').get(code);
+export async function getServiceByCode(code) {
+  return one('SELECT * FROM services WHERE code = ?', code);
 }
-export function getTypeById(id) {
-  return getDb().prepare('SELECT * FROM transaction_types WHERE id = ?').get(id);
+export async function getTypeById(id) {
+  return one('SELECT * FROM transaction_types WHERE id = ?', id);
 }
-export function getTypeByCode(code) {
-  return getDb().prepare('SELECT * FROM transaction_types WHERE code = ?').get(code);
+export async function getTypeByCode(code) {
+  return one('SELECT * FROM transaction_types WHERE code = ?', code);
 }
 
 /**
  * Commission auto-calculation from settings rules (settings key: commission.rules).
  * Rules: [{ "service_code": "fastpay", "type_code": "*", "percent": 1 }]
  */
-export function commissionRules() {
+export async function commissionRules() {
   try {
-    const raw = getSetting('commission.rules');
+    const raw = await getSetting('commission.rules');
     const rules = raw ? JSON.parse(raw) : [];
     return Array.isArray(rules) ? rules : [];
   } catch {
@@ -50,8 +50,8 @@ export function commissionRules() {
   }
 }
 
-export function autoCommission({ serviceCode, typeCode, amountMinor, currency }) {
-  const rules = commissionRules();
+export async function autoCommission({ serviceCode, typeCode, amountMinor, currency }) {
+  const rules = await commissionRules();
   for (const r of rules) {
     const svcOk = !r.service_code || r.service_code === '*' || r.service_code === serviceCode;
     const typeOk = !r.type_code || r.type_code === '*' || r.type_code === typeCode;
@@ -91,27 +91,30 @@ function computeNet(direction, amountMinor, commissionMinor) {
 // Duplicate protection
 // ------------------------------------------------------------------
 
-export function findDuplicates(db, input) {
+export async function findDuplicates(input) {
   const { reference_no, customer_id, amount_minor, currency, type_id, account_id, biz_date } = input;
   const rows = [];
   if (reference_no) {
-    const byRef = db
-      .prepare(
-        `SELECT t.id, t.tx_number, t.amount_minor, t.currency, t.biz_date, t.reference_no, t.status
-         FROM transactions t WHERE t.reference_no = ? AND t.status IN ('completed','pending')`
-      )
-      .all(reference_no);
+    const byRef = await all(
+      `SELECT t.id, t.tx_number, t.amount_minor, t.currency, t.biz_date, t.reference_no, t.status
+       FROM transactions t WHERE t.reference_no = ? AND t.status IN ('completed','pending')`,
+      reference_no
+    );
     rows.push(...byRef);
   }
   if (customer_id && amount_minor > 0) {
-    const similar = db
-      .prepare(
-        `SELECT t.id, t.tx_number, t.amount_minor, t.currency, t.biz_date, t.reference_no, t.status
-         FROM transactions t
-         WHERE t.customer_id = ? AND t.amount_minor = ? AND t.currency = ? AND t.type_id = ?
-           AND t.account_id = ? AND t.biz_date = ? AND t.status IN ('completed','pending')`
-      )
-      .all(customer_id, amount_minor, currency, type_id, account_id, biz_date);
+    const similar = await all(
+      `SELECT t.id, t.tx_number, t.amount_minor, t.currency, t.biz_date, t.reference_no, t.status
+       FROM transactions t
+       WHERE t.customer_id = ? AND t.amount_minor = ? AND t.currency = ? AND t.type_id = ?
+         AND t.account_id = ? AND t.biz_date = ? AND t.status IN ('completed','pending')`,
+      customer_id,
+      amount_minor,
+      currency,
+      type_id,
+      account_id,
+      biz_date
+    );
     rows.push(...similar);
   }
   const seen = new Set();
@@ -131,8 +134,8 @@ const CREATE_FIELDS = [
 ];
 
 /** Core insert — must run inside a transaction(). Returns the saved row. */
-export function coreCreate(conn, row, user) {
-  const tx_number = nextTxNumber(conn);
+export async function coreCreate(row, user) {
+  const tx_number = await nextTxNumber();
   const full = {
     ...row,
     tx_number,
@@ -150,14 +153,12 @@ export function coreCreate(conn, row, user) {
   const cols = CREATE_FIELDS;
   const placeholders = cols.map(() => '?').join(',');
   const values = cols.map((c) => (full[c] === undefined ? null : full[c]));
-  const r = conn
-    .prepare(`INSERT INTO transactions (${cols.join(',')}) VALUES (${placeholders})`)
-    .run(...values);
+  const r = await run(`INSERT INTO transactions (${cols.join(',')}) VALUES (${placeholders})`, ...values);
   const id = Number(r.lastInsertRowid);
-  const saved = conn.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
-  postLedger(conn, saved);
+  const saved = await one('SELECT * FROM transactions WHERE id = ?', id);
+  await postLedger(saved);
 
-  audit(conn, {
+  await audit({
     user,
     action: 'CREATE_TRANSACTION',
     entity: 'transaction',
@@ -177,17 +178,16 @@ export function coreCreate(conn, row, user) {
  * Public create with validation + duplicate protection.
  * @param {object} input normalized create input (see route schema)
  */
-export function createTransaction(input, user, ip, { skipDuplicateCheck = false } = {}) {
-  const db = getDb();
-  const service = input.service_id ? getServiceById(input.service_id) : getServiceByCode(input.service_code);
+export async function createTransaction(input, user, ip, { skipDuplicateCheck = false } = {}) {
+  const service = input.service_id ? await getServiceById(input.service_id) : await getServiceByCode(input.service_code);
   if (!service) throw validationError('Please select a service');
-  const type = input.type_id ? getTypeById(input.type_id) : getTypeByCode(input.type_code);
+  const type = input.type_id ? await getTypeById(input.type_id) : await getTypeByCode(input.type_code);
   if (!type) throw validationError('Please select a transaction type');
 
-  const account = db.prepare('SELECT * FROM accounts WHERE id = ?').get(input.account_id);
+  const account = await one('SELECT * FROM accounts WHERE id = ?', input.account_id);
   if (!account) throw validationError('Please select an account/wallet');
   if (input.counter_account_id) {
-    const counter = db.prepare('SELECT * FROM accounts WHERE id = ?').get(input.counter_account_id);
+    const counter = await one('SELECT * FROM accounts WHERE id = ?', input.counter_account_id);
     if (!counter) throw validationError('Invalid counter account');
     if (counter.id === account.id) throw validationError('Transfer accounts must be different');
   }
@@ -196,7 +196,7 @@ export function createTransaction(input, user, ip, { skipDuplicateCheck = false 
   if (amount === null || amount <= 0) throw validationError('Please enter the transaction amount');
 
   const currency = input.currency || 'IQD';
-  const cur = db.prepare('SELECT code FROM currencies WHERE code = ? AND is_active = 1').get(currency);
+  const cur = await one('SELECT code FROM currencies WHERE code = ? AND is_active = 1', currency);
   if (!cur) throw validationError('Unknown currency');
 
   let commission = input.commission_minor;
@@ -207,7 +207,7 @@ export function createTransaction(input, user, ip, { skipDuplicateCheck = false 
       if (c === null) throw validationError('Invalid commission');
       commission = c;
     } else {
-      commission = autoCommission({
+      commission = await autoCommission({
         serviceCode: service.code,
         typeCode: type.code,
         amountMinor: amount,
@@ -221,7 +221,7 @@ export function createTransaction(input, user, ip, { skipDuplicateCheck = false 
   if (commission > amount) throw validationError('Commission cannot exceed the transaction amount');
 
   if (input.customer_id) {
-    const cust = db.prepare('SELECT id FROM customers WHERE id = ?').get(input.customer_id);
+    const cust = await one('SELECT id FROM customers WHERE id = ?', input.customer_id);
     if (!cust) throw validationError('Unknown customer');
   }
 
@@ -258,7 +258,7 @@ export function createTransaction(input, user, ip, { skipDuplicateCheck = false 
   // Duplicate protection
   let duplicates = [];
   if (!skipDuplicateCheck && row.status !== 'cancelled') {
-    duplicates = findDuplicates(db, row);
+    duplicates = await findDuplicates(row);
     if (duplicates.length > 0 && !input.force) {
       throw conflict(
         'DUPLICATE_SUSPECTED',
@@ -268,11 +268,11 @@ export function createTransaction(input, user, ip, { skipDuplicateCheck = false 
     }
   }
 
-  return transaction((conn) => {
-    assertDayOpen(conn, row.biz_date, row.currency, 'Creating a transaction');
-    const saved = coreCreate(conn, row, user);
+  return transaction(async () => {
+    await assertDayOpen(row.biz_date, row.currency, 'Creating a transaction');
+    const saved = await coreCreate(row, user);
     if (duplicates.length > 0 && input.force) {
-      audit(conn, {
+      await audit({
         user,
         action: 'CREATE_TRANSACTION',
         entity: 'transaction',
@@ -293,8 +293,7 @@ export function createTransaction(input, user, ip, { skipDuplicateCheck = false 
 
 const LIST_MAX = 200;
 
-export function listTransactions(filters = {}) {
-  const db = getDb();
+export async function listTransactions(filters = {}) {
   const {
     from, to, service_code, service_id, type_code, customer_id, account_id, currency,
     status, q, direction, created_by, limit = 50, offset = 0, include_cancelled = true,
@@ -334,76 +333,75 @@ export function listTransactions(filters = {}) {
     LEFT JOIN users u ON u.id = t.created_by
     ${clause}`;
 
-  const total = db.prepare(`SELECT COUNT(*) AS c ${base}`).get(...params).c;
+  const total = (await one(`SELECT COUNT(*) AS c ${base}`, ...params)).c;
 
-  const totals = db
-    .prepare(
-      `SELECT t.currency,
-              COUNT(*) AS tx_count,
-              COALESCE(SUM(CASE WHEN t.direction = 'in'  THEN t.amount_minor ELSE 0 END), 0) AS inflow_minor,
-              COALESCE(SUM(CASE WHEN t.direction = 'out' THEN t.amount_minor ELSE 0 END), 0) AS outflow_minor,
-              COALESCE(SUM(t.commission_minor), 0) AS commission_minor
-       ${base} GROUP BY t.currency`
-    )
-    .all(...params);
+  const totals = await all(
+    `SELECT t.currency,
+            COUNT(*) AS tx_count,
+            COALESCE(SUM(CASE WHEN t.direction = 'in'  THEN t.amount_minor ELSE 0 END), 0) AS inflow_minor,
+            COALESCE(SUM(CASE WHEN t.direction = 'out' THEN t.amount_minor ELSE 0 END), 0) AS outflow_minor,
+            COALESCE(SUM(t.commission_minor), 0) AS commission_minor
+     ${base} GROUP BY t.currency`,
+    ...params
+  );
 
-  const rows = db
-    .prepare(
-      `SELECT t.*, s.code AS service_code, s.name AS service_name,
-              tt.code AS type_code, tt.name AS type_name,
-              c.full_name AS customer_name, c.phone AS customer_phone, c.code AS customer_code,
-              a.code AS account_code, a.name AS account_name,
-              u.full_name AS created_by_name,
-              (SELECT COUNT(*) FROM transactions r WHERE r.reversal_of = t.id) AS reversal_count
-       ${base}
-       ORDER BY t.biz_date DESC, t.time DESC, t.id DESC
-       LIMIT ? OFFSET ?`
-    )
-    .all(...params, Math.min(Number(limit) || 50, LIST_MAX), Number(offset) || 0);
+  const rows = await all(
+    `SELECT t.*, s.code AS service_code, s.name AS service_name,
+            tt.code AS type_code, tt.name AS type_name,
+            c.full_name AS customer_name, c.phone AS customer_phone, c.code AS customer_code,
+            a.code AS account_code, a.name AS account_name,
+            u.full_name AS created_by_name,
+            (SELECT COUNT(*) FROM transactions r WHERE r.reversal_of = t.id) AS reversal_count
+     ${base}
+     ORDER BY t.biz_date DESC, t.time DESC, t.id DESC
+     LIMIT ? OFFSET ?`,
+    ...params,
+    Math.min(Number(limit) || 50, LIST_MAX),
+    Number(offset) || 0
+  );
 
   return { total, rows, totals: totals.filter((t) => t.tx_count > 0) };
 }
 
-export function getTransaction(idOrNumber) {
-  const db = getDb();
-  const row = db
-    .prepare(
-      `SELECT t.*, s.code AS service_code, s.name AS service_name,
-              tt.code AS type_code, tt.name AS type_name,
-              c.full_name AS customer_name, c.phone AS customer_phone, c.code AS customer_code,
-              a.code AS account_code, a.name AS account_name,
-              ca.code AS counter_account_code, ca.name AS counter_account_name,
-              u.full_name AS created_by_name, e.full_name AS updated_by_name
-       FROM transactions t
-       JOIN services s ON s.id = t.service_id
-       JOIN transaction_types tt ON tt.id = t.type_id
-       LEFT JOIN customers c ON c.id = t.customer_id
-       JOIN accounts a ON a.id = t.account_id
-       LEFT JOIN accounts ca ON ca.id = t.counter_account_id
-       JOIN users u ON u.id = t.created_by
-       LEFT JOIN users e ON e.id = t.updated_by
-       WHERE t.id = ? OR t.tx_number = ?`
-    )
-    .get(Number(idOrNumber) || 0, String(idOrNumber));
+export async function getTransaction(idOrNumber) {
+  const row = await one(
+    `SELECT t.*, s.code AS service_code, s.name AS service_name,
+            tt.code AS type_code, tt.name AS type_name,
+            c.full_name AS customer_name, c.phone AS customer_phone, c.code AS customer_code,
+            a.code AS account_code, a.name AS account_name,
+            ca.code AS counter_account_code, ca.name AS counter_account_name,
+            u.full_name AS created_by_name, e.full_name AS updated_by_name
+     FROM transactions t
+     JOIN services s ON s.id = t.service_id
+     JOIN transaction_types tt ON tt.id = t.type_id
+     LEFT JOIN customers c ON c.id = t.customer_id
+     JOIN accounts a ON a.id = t.account_id
+     LEFT JOIN accounts ca ON ca.id = t.counter_account_id
+     JOIN users u ON u.id = t.created_by
+     LEFT JOIN users e ON e.id = t.updated_by
+     WHERE t.id = ? OR t.tx_number = ?`,
+    Number(idOrNumber) || 0,
+    String(idOrNumber)
+  );
   if (!row) throw notFound('Transaction');
 
-  const ledger = db
-    .prepare(
-      `SELECT l.*, a.code AS account_code, a.name AS account_name
-       FROM ledger_entries l JOIN accounts a ON a.id = l.account_id
-       WHERE l.txn_id = ?`
-    )
-    .all(row.id);
-  const receipts = db.prepare('SELECT id, receipt_number, created_at, print_count FROM receipts WHERE txn_id = ? ORDER BY id').all(row.id);
-  const related = db
-    .prepare(
-      `SELECT id, tx_number, direction, amount_minor, currency, status, biz_date
-       FROM transactions WHERE reversal_of = ? OR related_to = ? ORDER BY id`
-    )
-    .all(row.id, row.id);
-  const auditRows = db
-    .prepare(`SELECT * FROM audit_logs WHERE entity = 'transaction' AND entity_id = ? ORDER BY id DESC`)
-    .all(row.tx_number);
+  const ledger = await all(
+    `SELECT l.*, a.code AS account_code, a.name AS account_name
+     FROM ledger_entries l JOIN accounts a ON a.id = l.account_id
+     WHERE l.txn_id = ?`,
+    row.id
+  );
+  const receipts = await all('SELECT id, receipt_number, created_at, print_count FROM receipts WHERE txn_id = ? ORDER BY id', row.id);
+  const related = await all(
+    `SELECT id, tx_number, direction, amount_minor, currency, status, biz_date
+     FROM transactions WHERE reversal_of = ? OR related_to = ? ORDER BY id`,
+    row.id,
+    row.id
+  );
+  const auditRows = await all(
+    `SELECT * FROM audit_logs WHERE entity = 'transaction' AND entity_id = ? ORDER BY id DESC`,
+    row.tx_number
+  );
 
   return { ...row, ledger, receipts, related, audit: auditRows };
 }
@@ -417,9 +415,8 @@ const EDITABLE = [
   'biz_date', 'time', 'payment_method', 'account_id', 'counter_account_id', 'customer_id', 'status',
 ];
 
-export function updateTransaction(id, patch, user, ip) {
-  const db = getDb();
-  const before = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
+export async function updateTransaction(id, patch, user, ip) {
+  const before = await one('SELECT * FROM transactions WHERE id = ?', id);
   if (!before) throw notFound('Transaction');
   if (before.status === 'reversed') throw badRequest('ALREADY_REVERSED', 'A reversed transaction cannot be edited — create an adjustment instead');
   if (before.status === 'cancelled') throw badRequest('ALREADY_CANCELLED', 'A cancelled transaction cannot be edited');
@@ -457,13 +454,13 @@ export function updateTransaction(id, patch, user, ip) {
     throw validationError('A reason is required to modify a financial record');
   }
 
-  return transaction((conn) => {
+  return transaction(async () => {
     const merged = { ...before, ...changes };
     const amount = merged.amount_minor;
     const commission = Math.min(merged.commission_minor || 0, amount);
     if (commission > amount) throw validationError('Commission cannot exceed the transaction amount');
     const net = computeNet(merged.direction, amount, commission);
-    assertDayOpen(conn, merged.biz_date, merged.currency, 'Modifying a transaction');
+    await assertDayOpen(merged.biz_date, merged.currency, 'Modifying a transaction');
 
     const sets = ['net_minor = ?', 'commission_minor = ?', 'updated_by = ?', 'updated_at = ?'];
     const values = [net, commission, user.id, nowIso()];
@@ -475,14 +472,14 @@ export function updateTransaction(id, patch, user, ip) {
       values.push(changes[field]);
     }
     values.push(id);
-    conn.prepare(`UPDATE transactions SET ${sets.join(', ')} WHERE id = ?`).run(...values);
+    await run(`UPDATE transactions SET ${sets.join(', ')} WHERE id = ?`, ...values);
 
     // Re-post ledger derived from the new values
-    unpostLedger(conn, id);
-    const saved = conn.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
-    if (saved.status === 'completed') postLedger(conn, saved);
+    await unpostLedger(id);
+    const saved = await one('SELECT * FROM transactions WHERE id = ?', id);
+    if (saved.status === 'completed') await postLedger(saved);
 
-    audit(conn, {
+    await audit({
       user,
       action: 'EDIT_TRANSACTION',
       entity: 'transaction',
@@ -500,22 +497,21 @@ export function updateTransaction(id, patch, user, ip) {
 // Reverse / cancel / refund — no permanent deletions, ever
 // ------------------------------------------------------------------
 
-export function reverseTransaction(id, { reason }, user, ip) {
-  const db = getDb();
-  const original = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
+export async function reverseTransaction(id, { reason }, user, ip) {
+  const original = await one('SELECT * FROM transactions WHERE id = ?', id);
   if (!original) throw notFound('Transaction');
   if (original.status === 'reversed') throw badRequest('ALREADY_REVERSED', 'This transaction has already been reversed');
   if (original.status === 'cancelled') throw badRequest('ALREADY_CANCELLED', 'A cancelled transaction cannot be reversed');
   if (!reason || !String(reason).trim()) throw validationError('A reason is required to reverse a transaction');
 
-  return transaction((conn) => {
-    const reversal = coreCreate(
-      conn,
+  return transaction(async () => {
+    const reversalType = await getTypeByCode('reversal');
+    const reversal = await coreCreate(
       {
         biz_date: today(),
         time: nowTime(),
         service_id: original.service_id,
-        type_id: getTypeByCode('reversal').id,
+        type_id: reversalType.id,
         customer_id: original.customer_id,
         account_id: original.account_id,
         counter_account_id: original.counter_account_id,
@@ -531,10 +527,14 @@ export function reverseTransaction(id, { reason }, user, ip) {
       },
       user
     );
-    conn
-      .prepare(`UPDATE transactions SET status = 'reversed', reversed_by = ?, updated_by = ?, updated_at = ? WHERE id = ?`)
-      .run(reversal.id, user.id, nowIso(), original.id);
-    audit(conn, {
+    await run(
+      `UPDATE transactions SET status = 'reversed', reversed_by = ?, updated_by = ?, updated_at = ? WHERE id = ?`,
+      reversal.id,
+      user.id,
+      nowIso(),
+      original.id
+    );
+    await audit({
       user,
       action: 'REVERSE_TRANSACTION',
       entity: 'transaction',
@@ -544,24 +544,23 @@ export function reverseTransaction(id, { reason }, user, ip) {
       reason: String(reason).trim(),
       ip,
     });
-    return { original: getTransaction(original.id), reversal: getTransaction(reversal.id) };
+    return { original: await getTransaction(original.id), reversal: await getTransaction(reversal.id) };
   });
 }
 
-export function cancelTransaction(id, { reason }, user, ip) {
-  const db = getDb();
-  const original = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
+export async function cancelTransaction(id, { reason }, user, ip) {
+  const original = await one('SELECT * FROM transactions WHERE id = ?', id);
   if (!original) throw notFound('Transaction');
   if (original.status !== 'pending') {
     throw badRequest('CANCEL_ONLY_PENDING', 'Only pending transactions can be cancelled. Completed transactions must be reversed.');
   }
   if (!reason || !String(reason).trim()) throw validationError('A reason is required to cancel a transaction');
 
-  return transaction((conn) => {
-    assertDayOpen(conn, original.biz_date, original.currency, 'Cancelling a transaction');
-    conn.prepare(`UPDATE transactions SET status = 'cancelled', updated_by = ?, updated_at = ? WHERE id = ?`).run(user.id, nowIso(), id);
-    unpostLedger(conn, id);
-    audit(conn, {
+  return transaction(async () => {
+    await assertDayOpen(original.biz_date, original.currency, 'Cancelling a transaction');
+    await run(`UPDATE transactions SET status = 'cancelled', updated_by = ?, updated_at = ? WHERE id = ?`, user.id, nowIso(), id);
+    await unpostLedger(id);
+    await audit({
       user, action: 'CANCEL_TRANSACTION', entity: 'transaction', entityId: original.tx_number,
       oldValue: { status: original.status }, newValue: { status: 'cancelled' },
       reason: String(reason).trim(), ip,
@@ -570,9 +569,8 @@ export function cancelTransaction(id, { reason }, user, ip) {
   });
 }
 
-export function refundTransaction(id, { reason, amount, currency }, user, ip) {
-  const db = getDb();
-  const original = db.prepare('SELECT * FROM transactions WHERE id = ?').get(id);
+export async function refundTransaction(id, { reason, amount, currency }, user, ip) {
+  const original = await one('SELECT * FROM transactions WHERE id = ?', id);
   if (!original) throw notFound('Transaction');
   if (original.status !== 'completed') throw badRequest('INVALID_STATUS', 'Only completed transactions can be refunded');
   if (!reason || !String(reason).trim()) throw validationError('A reason is required to refund a transaction');
@@ -585,24 +583,25 @@ export function refundTransaction(id, { reason, amount, currency }, user, ip) {
   const cur = currency || original.currency;
   if (cur !== original.currency) throw validationError('Refund currency must match the original transaction');
 
-  const refunded = db
-    .prepare(
+  const refunded = (
+    await one(
       `SELECT COALESCE(SUM(t.amount_minor),0) AS total FROM transactions t
-       WHERE t.related_to = ? AND t.status = 'completed' AND t.type_id = (SELECT id FROM transaction_types WHERE code='refund')`
+       WHERE t.related_to = ? AND t.status = 'completed' AND t.type_id = (SELECT id FROM transaction_types WHERE code='refund')`,
+      original.id
     )
-    .get(original.id).total;
+  ).total;
   if (refunded + refundAmount > original.amount_minor) {
     throw validationError('Refund exceeds the remaining refundable amount of this transaction');
   }
 
-  return transaction((conn) => {
-    const refund = coreCreate(
-      conn,
+  return transaction(async () => {
+    const refundType = await getTypeByCode('refund');
+    const refund = await coreCreate(
       {
         biz_date: today(),
         time: nowTime(),
         service_id: original.service_id,
-        type_id: getTypeByCode('refund').id,
+        type_id: refundType.id,
         customer_id: original.customer_id,
         account_id: original.account_id,
         counter_account_id: original.counter_account_id,
@@ -618,13 +617,13 @@ export function refundTransaction(id, { reason, amount, currency }, user, ip) {
       },
       user
     );
-    audit(conn, {
+    await audit({
       user, action: 'REFUND_TRANSACTION', entity: 'transaction', entityId: original.tx_number,
       oldValue: { refunded_minor: refunded },
       newValue: { refunded_minor: refunded + refundAmount, refund_tx: refund.tx_number },
       reason: String(reason).trim(), ip,
     });
-    return { original: getTransaction(original.id), refund: getTransaction(refund.id) };
+    return { original: await getTransaction(original.id), refund: await getTransaction(refund.id) };
   });
 }
 
@@ -632,28 +631,25 @@ export function refundTransaction(id, { reason, amount, currency }, user, ip) {
 // Range summary used by dashboard + reports (grouped by currency)
 // ------------------------------------------------------------------
 
-export function rangeSummary(from, to, extra = {}) {
-  const db = getDb();
+export async function rangeSummary(from, to, extra = {}) {
   const where = ['t.biz_date >= ?', 't.biz_date <= ?'];
   const params = [from, to];
   if (extra.service_code) { where.push('s.code = ?'); params.push(extra.service_code); }
   if (extra.type_code) { where.push('tt.code = ?'); params.push(extra.type_code); }
   if (extra.currency) { where.push('t.currency = ?'); params.push(extra.currency); }
   const clause = `WHERE ${where.join(' AND ')} AND t.status = 'completed'`;
-  const row = db
-    .prepare(
-      `SELECT t.currency,
-              COUNT(*) AS tx_count,
-              COALESCE(SUM(CASE WHEN t.direction = 'in'  THEN t.amount_minor ELSE 0 END), 0) AS inflow_minor,
-              COALESCE(SUM(CASE WHEN t.direction = 'out' THEN t.amount_minor ELSE 0 END), 0) AS outflow_minor,
-              COALESCE(SUM(t.commission_minor), 0) AS commission_minor
-       FROM transactions t
-       JOIN services s ON s.id = t.service_id
-       JOIN transaction_types tt ON tt.id = t.type_id
-       ${clause} GROUP BY t.currency`
-    )
-    .all(...params);
-  return row;
+  return all(
+    `SELECT t.currency,
+            COUNT(*) AS tx_count,
+            COALESCE(SUM(CASE WHEN t.direction = 'in'  THEN t.amount_minor ELSE 0 END), 0) AS inflow_minor,
+            COALESCE(SUM(CASE WHEN t.direction = 'out' THEN t.amount_minor ELSE 0 END), 0) AS outflow_minor,
+            COALESCE(SUM(t.commission_minor), 0) AS commission_minor
+     FROM transactions t
+     JOIN services s ON s.id = t.service_id
+     JOIN transaction_types tt ON tt.id = t.type_id
+     ${clause} GROUP BY t.currency`,
+    ...params
+  );
 }
 
 export { sumMinor };

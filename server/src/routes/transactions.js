@@ -39,7 +39,7 @@ const createSchema = z.object({
   receipt: z.boolean().optional(),
 });
 
-router.get('/', requirePermission('transaction.view'), (req, res) => {
+router.get('/', requirePermission('transaction.view'), async (req, res) => {
   const q = parse(
     z.object({
       from: zBizDate.optional(), to: zBizDate.optional(), range: z.string().optional(),
@@ -58,10 +58,10 @@ router.get('/', requirePermission('transaction.view'), (req, res) => {
     const r = resolveRange(range);
     rest = { ...rest, from: r.from, to: r.to };
   }
-  res.json(listTransactions(rest));
+  res.json(await listTransactions(rest));
 });
 
-router.get('/summary', requirePermission('transaction.view'), (req, res) => {
+router.get('/summary', requirePermission('transaction.view'), async (req, res) => {
   const q = parse(
     z.object({
       range: z.string().default('today'),
@@ -71,25 +71,25 @@ router.get('/summary', requirePermission('transaction.view'), (req, res) => {
     req.query
   );
   const r = q.from && q.to ? { from: q.from, to: q.to } : resolveRange(q.range);
-  res.json({ from: r.from, to: r.to, rows: rangeSummary(r.from, r.to, q) });
+  res.json({ from: r.from, to: r.to, rows: await rangeSummary(r.from, r.to, q) });
 });
 
-router.post('/', requirePermission('transaction.create'), (req, res) => {
+router.post('/', requirePermission('transaction.create'), async (req, res) => {
   const body = parse(createSchema, req.body);
   const { receipt, ...input } = body;
-  const saved = createTransaction(input, req.user, req.ip);
+  const saved = await createTransaction(input, req.user, req.ip);
   let receiptRow = null;
   if (receipt !== false) {
-    receiptRow = createReceiptForTransaction(saved.id, req.user, req.ip, { silentDuplicate: true });
+    receiptRow = await createReceiptForTransaction(saved.id, req.user, req.ip, { silentDuplicate: true });
   }
-  res.status(201).json({ transaction: getTransaction(saved.id), receipt: receiptRow });
+  res.status(201).json({ transaction: await getTransaction(saved.id), receipt: receiptRow });
 });
 
-router.get('/:id', requirePermission('transaction.view'), (req, res) => {
-  res.json(getTransaction(req.params.id));
+router.get('/:id', requirePermission('transaction.view'), async (req, res) => {
+  res.json(await getTransaction(req.params.id));
 });
 
-router.patch('/:id', requirePermission('transaction.edit'), (req, res) => {
+router.patch('/:id', requirePermission('transaction.edit'), async (req, res) => {
   const body = parse(
     z.object({
       amount: z.union([z.string(), z.number()]).optional(),
@@ -108,22 +108,22 @@ router.patch('/:id', requirePermission('transaction.edit'), (req, res) => {
     }),
     req.body
   );
-  updateTransaction(Number(req.params.id), body, req.user, req.ip);
-  res.json(getTransaction(req.params.id));
+  await updateTransaction(Number(req.params.id), body, req.user, req.ip);
+  res.json(await getTransaction(req.params.id));
 });
 
-router.post('/:id/reverse', requirePermission('transaction.reverse'), (req, res) => {
+router.post('/:id/reverse', requirePermission('transaction.reverse'), async (req, res) => {
   const body = parse(z.object({ reason: z.string().trim().min(3).max(300) }), req.body);
-  const result = reverseTransaction(Number(req.params.id), body, req.user, req.ip);
+  const result = await reverseTransaction(Number(req.params.id), body, req.user, req.ip);
   res.json(result);
 });
 
-router.post('/:id/cancel', requirePermission('transaction.cancel'), (req, res) => {
+router.post('/:id/cancel', requirePermission('transaction.cancel'), async (req, res) => {
   const body = parse(z.object({ reason: z.string().trim().min(3).max(300) }), req.body);
-  res.json(cancelTransaction(Number(req.params.id), body, req.user, req.ip));
+  res.json(await cancelTransaction(Number(req.params.id), body, req.user, req.ip));
 });
 
-router.post('/:id/refund', requirePermission('transaction.reverse'), (req, res) => {
+router.post('/:id/refund', requirePermission('transaction.reverse'), async (req, res) => {
   const body = parse(
     z.object({
       reason: z.string().trim().min(3).max(300),
@@ -132,7 +132,7 @@ router.post('/:id/refund', requirePermission('transaction.reverse'), (req, res) 
     }),
     req.body
   );
-  res.json(refundTransaction(Number(req.params.id), body, req.user, req.ip));
+  res.json(await refundTransaction(Number(req.params.id), body, req.user, req.ip));
 });
 
 export default router;

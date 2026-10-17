@@ -176,7 +176,7 @@ try {
   check('closed day locked', locked.json?.error?.code === 'DAY_CLOSED');
 
   const backup = (await call('/api/backups', { method: 'POST', expect: 201, body: { note: 'smoke' } })).json;
-  check('backup file created', backup.file_name?.endsWith('.db'));
+  check('backup file created', backup.file_name?.endsWith('.json'));
   const backups = (await call('/api/backups')).json;
   check('backup listed + no warning', backups.backups.length === 1 && backups.needs_backup === false);
 

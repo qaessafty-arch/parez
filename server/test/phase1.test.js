@@ -5,10 +5,11 @@ import { freshDb, makeUser, svc, typeOf, account } from './helpers.js';
 import { toMinor, toDecimalString, convertMinor, netOf, MoneyError } from '../src/lib/money.js';
 import { computeLedgerRows, accountBalance, postLedger } from '../src/services/ledger.js';
 import { resolveRange, isValidBizDate } from '../src/lib/dates.js';
+import { all, one, run } from '../src/db/index.js';
 
-test('Phase1: schema tables exist with FK enforcement', () => {
-  const db = freshDb();
-  const tables = db.prepare(`SELECT name FROM sqlite_master WHERE type='table'`).all().map((t) => t.name);
+test('Phase1: schema tables exist with FK enforcement', async () => {
+  await freshDb();
+  const tables = (await all(`SELECT name FROM sqlite_master WHERE type='table'`)).map((t) => t.name);
   for (const t of [
     'users', 'roles', 'customers', 'transactions', 'ledger_entries', 'services', 'accounts',
     'ronaki_projects', 'ronaki_contracts', 'ronaki_payments', 'expenses', 'expense_categories',
@@ -16,26 +17,21 @@ test('Phase1: schema tables exist with FK enforcement', () => {
   ]) {
     assert.ok(tables.includes(t), `missing table ${t}`);
   }
-  const fk = db.prepare('PRAGMA foreign_keys').get();
+  const fk = await one('PRAGMA foreign_keys');
   assert.equal(Object.values(fk)[0], 1);
 });
 
-test('Phase1: money is stored as integer minor units, never float', () => {
-  const db = freshDb();
-  const col = db.prepare(`SELECT type FROM pragma_table_info('transactions') WHERE name='amount_minor'`).get();
+test('Phase1: money is stored as integer minor units, never float', async () => {
+  await freshDb();
+  const col = await one(`SELECT type FROM pragma_table_info('transactions') WHERE name='amount_minor'`);
   assert.equal(col.type, 'INTEGER');
   // constraint: negative amount rejected
-  assert.throws(() =>
-    db
-      .prepare(
-        `INSERT INTO transactions (tx_number, biz_date, time, service_id, type_id, account_id, direction, amount_minor, currency, created_by)
-         VALUES ('TX-BAD', '2026-09-30', '10:00', 1, 1, 1, 'in', -500, 'IQD', 1)`
-      )
-      .run()
+  await assert.rejects(() => run(`INSERT INTO transactions (tx_number, biz_date, time, service_id, type_id, account_id, direction, amount_minor, currency, created_by)
+         VALUES ('TX-BAD', '2026-09-30', '10:00', 1, 1, 1, 'in', -500, 'IQD', 1)`)
   );
 });
 
-test('money: parse/format/convert without floating point drift', () => {
+test('money: parse/format/convert without floating point drift', async () => {
   assert.equal(toMinor('250,000.50'), 25000050);
   assert.equal(toMinor(250000), 25000000);
   assert.equal(toDecimalString(25000050), '250000.50');
@@ -47,27 +43,23 @@ test('money: parse/format/convert without floating point drift', () => {
   assert.equal(convertMinor(25000000, '0.000763'), 19075); // rounding stable
 });
 
-test('money: currency separation is structural (per-currency balances)', () => {
-  const db = freshDb();
-  const user = makeUser(db);
-  const cash = account(db, 'CASH');
-  db.prepare(
-    `INSERT INTO transactions (tx_number, biz_date, time, service_id, type_id, account_id, direction, amount_minor, currency, created_by, status)
-     VALUES ('TX-IOD', '2026-09-30', '09:00', 4, 9, ?, 'in', 5000000, 'IQD', ?, 'completed')`
-  ).run(cash.id, user.id);
-  db.prepare(
-    `INSERT INTO transactions (tx_number, biz_date, time, service_id, type_id, account_id, direction, amount_minor, currency, created_by, status)
-     VALUES ('TX-USDD', '2026-09-30', '09:05', 4, 9, ?, 'in', 25000, 'USD', ?, 'completed')`
-  ).run(cash.id, user.id);
-  for (const t of db.prepare('SELECT * FROM transactions').all()) postLedger(db, t);
-  assert.equal(accountBalance(cash.id, 'IQD'), 5000000);
-  assert.equal(accountBalance(cash.id, 'USD'), 25000);
+test('money: currency separation is structural (per-currency balances)', async () => {
+  await freshDb();
+  const user = await makeUser();
+  const cash = await account('CASH');
+  await run(`INSERT INTO transactions (tx_number, biz_date, time, service_id, type_id, account_id, direction, amount_minor, currency, created_by, status)
+     VALUES ('TX-IOD', '2026-09-30', '09:00', 4, 9, ?, 'in', 5000000, 'IQD', ?, 'completed')`, cash.id, user.id);
+  await run(`INSERT INTO transactions (tx_number, biz_date, time, service_id, type_id, account_id, direction, amount_minor, currency, created_by, status)
+     VALUES ('TX-USDD', '2026-09-30', '09:05', 4, 9, ?, 'in', 25000, 'USD', ?, 'completed')`, cash.id, user.id);
+  for (const t of await all('SELECT * FROM transactions')) await postLedger(t);
+  assert.equal(await accountBalance(cash.id, 'IQD'), 5000000);
+  assert.equal(await accountBalance(cash.id, 'USD'), 25000);
   // mixed currency rows are impossible in one balance query (grouped by currency)
-  const grouped = db.prepare(`SELECT currency, COUNT(*) c FROM ledger_entries GROUP BY currency`).all();
+  const grouped = await all(`SELECT currency, COUNT(*) c FROM ledger_entries GROUP BY currency`);
   assert.equal(grouped.length, 2);
 });
 
-test('ledger rules: in posts gross, out posts net of commission, transfer posts both sides', () => {
+test('ledger rules: in posts gross, out posts net of commission, transfer posts both sides', async () => {
   const fastpay = { id: 10, currency: 'IQD' };
   const rows = computeLedgerRows({
     id: 1, account_id: 2, counter_account_id: 3, direction: 'in', amount_minor: 25000000,
@@ -97,7 +89,7 @@ test('ledger rules: in posts gross, out posts net of commission, transfer posts 
   assert.ok(fastpay);
 });
 
-test('dates: Iraq local time ranges and validation', () => {
+test('dates: Iraq local time ranges and validation', async () => {
   assert.ok(isValidBizDate('2026-09-30'));
   assert.ok(!isValidBizDate('2026-13-40'));
   assert.ok(!isValidBizDate('30-09-2026'));
@@ -108,22 +100,22 @@ test('dates: Iraq local time ranges and validation', () => {
   assert.throws(() => resolveRange('custom', '2026-09-30', { from: '2026-09-15', to: '2026-09-01' }));
 });
 
-test('seed: master data present and idempotent', () => {
-  const db = freshDb();
-  const counts = () => ({
-    cur: db.prepare('SELECT COUNT(*) c FROM currencies').get().c,
-    acc: db.prepare('SELECT COUNT(*) c FROM accounts').get().c,
-    svc: db.prepare('SELECT COUNT(*) c FROM services').get().c,
-    types: db.prepare('SELECT COUNT(*) c FROM transaction_types').get().c,
-    roles: db.prepare('SELECT COUNT(*) c FROM roles').get().c,
+test('seed: master data present and idempotent', async () => {
+  await freshDb();
+  const counts = async () => ({
+    cur: (await one('SELECT COUNT(*) c FROM currencies')).c,
+    acc: (await one('SELECT COUNT(*) c FROM accounts')).c,
+    svc: (await one('SELECT COUNT(*) c FROM services')).c,
+    types: (await one('SELECT COUNT(*) c FROM transaction_types')).c,
+    roles: (await one('SELECT COUNT(*) c FROM roles')).c,
   });
-  const a = counts();
+  const a = await counts();
   assert.equal(a.cur, 2);
   assert.equal(a.acc, 5);
   assert.equal(a.svc, 4);
   assert.equal(a.roles, 2);
-  const b = counts();
+  const b = await counts();
   assert.deepEqual(a, b);
-  assert.ok(svc(db, 'fastpay'));
-  assert.ok(typeOf(db, 'withdrawal'));
+  assert.ok(await svc('fastpay'));
+  assert.ok(await typeOf('withdrawal'));
 });

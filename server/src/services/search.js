@@ -1,21 +1,22 @@
 /** Global search — fast, forgiving search across all key entities. */
-import { getDb } from '../db/index.js';
+import { all } from '../db/index.js';
 
-export function globalSearch(qRaw, { limit = 8 } = {}) {
+export async function globalSearch(qRaw, { limit = 8 } = {}) {
   const q = String(qRaw || '').trim();
   if (q.length < 1) return { query: q, results: [] };
   const like = `%${q}%`;
-  const db = getDb();
   const results = [];
 
   // Customers (name / phone / code)
-  for (const c of db
-    .prepare(
-      `SELECT id, code, full_name, phone FROM customers
-       WHERE full_name LIKE ? OR phone LIKE ? OR code LIKE ?
-       ORDER BY full_name LIMIT ?`
-    )
-    .all(like, like, like, limit)) {
+  for (const c of await all(
+    `SELECT id, code, full_name, phone FROM customers
+     WHERE full_name LIKE ? OR phone LIKE ? OR code LIKE ?
+     ORDER BY full_name LIMIT ?`,
+    like,
+    like,
+    like,
+    limit
+  )) {
     results.push({
       kind: 'customer',
       id: c.id,
@@ -26,18 +27,21 @@ export function globalSearch(qRaw, { limit = 8 } = {}) {
   }
 
   // Transactions (tx number / reference / description / wallet number)
-  for (const t of db
-    .prepare(
-      `SELECT t.id, t.tx_number, t.reference_no, t.amount_minor, t.currency, t.description, t.wallet_number,
-              s.name AS service_name, c.full_name AS customer_name
-       FROM transactions t
-       JOIN services s ON s.id = t.service_id
-       LEFT JOIN customers c ON c.id = t.customer_id
-       WHERE t.tx_number LIKE ? OR IFNULL(t.reference_no,'') LIKE ? OR IFNULL(t.description,'') LIKE ?
-          OR IFNULL(t.wallet_number,'') LIKE ?
-       ORDER BY t.id DESC LIMIT ?`
-    )
-    .all(like, like, like, like, limit)) {
+  for (const t of await all(
+    `SELECT t.id, t.tx_number, t.reference_no, t.amount_minor, t.currency, t.description, t.wallet_number,
+            s.name AS service_name, c.full_name AS customer_name
+     FROM transactions t
+     JOIN services s ON s.id = t.service_id
+     LEFT JOIN customers c ON c.id = t.customer_id
+     WHERE t.tx_number LIKE ? OR IFNULL(t.reference_no,'') LIKE ? OR IFNULL(t.description,'') LIKE ?
+        OR IFNULL(t.wallet_number,'') LIKE ?
+     ORDER BY t.id DESC LIMIT ?`,
+    like,
+    like,
+    like,
+    like,
+    limit
+  )) {
     results.push({
       kind: 'transaction',
       id: t.id,
@@ -48,12 +52,12 @@ export function globalSearch(qRaw, { limit = 8 } = {}) {
   }
 
   // Receipts
-  for (const r of db
-    .prepare(
-      `SELECT id, receipt_number, currency, total_minor FROM receipts
-       WHERE receipt_number LIKE ? ORDER BY id DESC LIMIT ?`
-    )
-    .all(like, Math.min(limit, 5))) {
+  for (const r of await all(
+    `SELECT id, receipt_number, currency, total_minor FROM receipts
+     WHERE receipt_number LIKE ? ORDER BY id DESC LIMIT ?`,
+    like,
+    Math.min(limit, 5)
+  )) {
     results.push({
       kind: 'receipt',
       id: r.id,
@@ -64,15 +68,19 @@ export function globalSearch(qRaw, { limit = 8 } = {}) {
   }
 
   // Ronaki contracts (contract number / house / customer ref)
-  for (const c of db
-    .prepare(
-      `SELECT c.id, c.contract_number, c.house_unit, c.customer_ref, cu.full_name
-       FROM ronaki_contracts c JOIN customers cu ON cu.id = c.customer_id
-       WHERE c.contract_number LIKE ? OR IFNULL(c.house_unit,'') LIKE ? OR IFNULL(c.customer_ref,'') LIKE ?
-         OR cu.full_name LIKE ? OR IFNULL(cu.phone,'') LIKE ?
-       ORDER BY c.id DESC LIMIT ?`
-    )
-    .all(like, like, like, like, like, limit)) {
+  for (const c of await all(
+    `SELECT c.id, c.contract_number, c.house_unit, c.customer_ref, cu.full_name
+     FROM ronaki_contracts c JOIN customers cu ON cu.id = c.customer_id
+     WHERE c.contract_number LIKE ? OR IFNULL(c.house_unit,'') LIKE ? OR IFNULL(c.customer_ref,'') LIKE ?
+       OR cu.full_name LIKE ? OR IFNULL(cu.phone,'') LIKE ?
+     ORDER BY c.id DESC LIMIT ?`,
+    like,
+    like,
+    like,
+    like,
+    like,
+    limit
+  )) {
     results.push({
       kind: 'ronaki_contract',
       id: c.id,
@@ -83,14 +91,14 @@ export function globalSearch(qRaw, { limit = 8 } = {}) {
   }
 
   // Wallet accounts (FastPay / NassWallet numbers recorded on transactions)
-  for (const w of db
-    .prepare(
-      `SELECT wallet_number, COUNT(*) AS uses, MAX(biz_date) AS last_used
-       FROM transactions
-       WHERE IFNULL(wallet_number,'') <> '' AND wallet_number LIKE ?
-       GROUP BY wallet_number ORDER BY last_used DESC LIMIT ?`
-    )
-    .all(like, Math.min(limit, 5))) {
+  for (const w of await all(
+    `SELECT wallet_number, COUNT(*) AS uses, MAX(biz_date) AS last_used
+     FROM transactions
+     WHERE IFNULL(wallet_number,'') <> '' AND wallet_number LIKE ?
+     GROUP BY wallet_number ORDER BY last_used DESC LIMIT ?`,
+    like,
+    Math.min(limit, 5)
+  )) {
     results.push({
       kind: 'wallet_account',
       id: w.wallet_number,
@@ -101,14 +109,16 @@ export function globalSearch(qRaw, { limit = 8 } = {}) {
   }
 
   // Expenses (supplier / number)
-  for (const e of db
-    .prepare(
-      `SELECT e.id, e.expense_number, e.description, t.amount_minor, t.currency
-       FROM expenses e JOIN transactions t ON t.id = e.txn_id
-       WHERE e.expense_number LIKE ? OR e.description LIKE ? OR IFNULL(e.supplier,'') LIKE ?
-       ORDER BY t.biz_date DESC LIMIT ?`
-    )
-    .all(like, like, like, Math.min(limit, 5))) {
+  for (const e of await all(
+    `SELECT e.id, e.expense_number, e.description, t.amount_minor, t.currency
+     FROM expenses e JOIN transactions t ON t.id = e.txn_id
+     WHERE e.expense_number LIKE ? OR e.description LIKE ? OR IFNULL(e.supplier,'') LIKE ?
+     ORDER BY t.biz_date DESC LIMIT ?`,
+    like,
+    like,
+    like,
+    Math.min(limit, 5)
+  )) {
     results.push({
       kind: 'expense',
       id: e.id,

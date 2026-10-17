@@ -11,16 +11,16 @@ const router = Router();
 
 router.use(requirePermission('expense.view'));
 
-router.get('/categories', (req, res) => {
-  res.json({ categories: listExpenseCategories({ includeInactive: req.query.all === '1' }) });
+router.get('/categories', async (req, res) => {
+  res.json({ categories: await listExpenseCategories({ includeInactive: req.query.all === '1' }) });
 });
 
-router.post('/categories', requirePermission('expense.create'), (req, res) => {
+router.post('/categories', requirePermission('expense.create'), async (req, res) => {
   const body = parse(z.object({ name: z.string().trim().min(2).max(60), code: z.string().trim().max(40).optional() }), req.body);
-  res.status(201).json(createExpenseCategory(body, req.user, req.ip));
+  res.status(201).json(await createExpenseCategory(body, req.user, req.ip));
 });
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const q = parse(
     z.object({
       from: zBizDate.optional(), to: zBizDate.optional(),
@@ -32,10 +32,10 @@ router.get('/', (req, res) => {
     }),
     req.query
   );
-  res.json(listExpenses(q));
+  res.json(await listExpenses(q));
 });
 
-router.post('/', requirePermission('expense.create'), (req, res) => {
+router.post('/', requirePermission('expense.create'), async (req, res) => {
   const body = parse(
     z.object({
       category_id: z.coerce.number().int(),
@@ -53,14 +53,14 @@ router.post('/', requirePermission('expense.create'), (req, res) => {
     }),
     req.body
   );
-  res.status(201).json(recordExpense(body, req.user, req.ip));
+  res.status(201).json(await recordExpense(body, req.user, req.ip));
 });
 
-router.get('/:id', (req, res) => {
-  res.json(getExpense(req.params.id));
+router.get('/:id', async (req, res) => {
+  res.json(await getExpense(req.params.id));
 });
 
-router.patch('/:id', requirePermission('expense.edit'), (req, res) => {
+router.patch('/:id', requirePermission('expense.edit'), async (req, res) => {
   const body = parse(
     z.object({
       category_id: z.coerce.number().int().optional(),
@@ -75,7 +75,7 @@ router.patch('/:id', requirePermission('expense.edit'), (req, res) => {
     }),
     req.body
   );
-  res.json(updateExpense(Number(req.params.id), body, req.user, req.ip));
+  res.json(await updateExpense(Number(req.params.id), body, req.user, req.ip));
 });
 
 export default router;

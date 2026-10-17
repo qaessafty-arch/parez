@@ -3,7 +3,7 @@
  * Export: CSV (UTF-8 BOM so Excel opens Kurdish/Arabic correctly) + JSON
  * (the client renders print-friendly HTML for PDF via the browser).
  */
-import { getDb } from '../db/index.js';
+import { all, one } from '../db/index.js';
 import { resolveRange, today, formatDisplayDate } from '../lib/dates.js';
 import { listTransactions, rangeSummary } from './transactions.js';
 import { listExpenses } from './expenses.js';
@@ -37,7 +37,7 @@ function rangeFor(type, { from, to }) {
   }
 }
 
-export function runReport(type, params = {}) {
+export async function runReport(type, params = {}) {
   if (!REPORT_TYPES.includes(type)) throw new Error(`Unknown report: ${type}`);
   const range = rangeFor(type, params);
   const base = {
@@ -50,10 +50,10 @@ export function runReport(type, params = {}) {
   switch (type) {
     case 'fastpay':
     case 'nasswallet':
-      return { ...base, ...serviceReport(type, range, params) };
+      return { ...base, ...(await serviceReport(type, range, params)) };
 
     case 'ronaki': {
-      const r = ronakiReport({ from: range.from, to: range.to, q: params.q || '', project_id: params.project_id || null });
+      const r = await ronakiReport({ from: range.from, to: range.to, q: params.q || '', project_id: params.project_id || null });
       return {
         ...base,
         title: 'Ronaki Project Collection Report',
@@ -89,16 +89,16 @@ export function runReport(type, params = {}) {
     }
 
     case 'customer_debt':
-      return { ...base, ...customerDebtReport(range, params) };
+      return { ...base, ...(await customerDebtReport(range, params)) };
 
     case 'expense':
-      return { ...base, ...expenseReport(range, params) };
+      return { ...base, ...(await expenseReport(range, params)) };
 
     case 'commission':
-      return { ...base, ...commissionReport(range, params) };
+      return { ...base, ...(await commissionReport(range, params)) };
 
     case 'cash_flow':
-      return { ...base, ...cashFlowReport(range, params) };
+      return { ...base, ...(await cashFlowReport(range, params)) };
 
     case 'daily':
     case 'weekly':
@@ -106,7 +106,7 @@ export function runReport(type, params = {}) {
     case 'custom':
     case 'transactions':
     default:
-      return { ...base, ...transactionReport(range, params) };
+      return { ...base, ...(await transactionReport(range, params)) };
   }
 }
 
@@ -147,8 +147,8 @@ function mapTxn(r) {
   };
 }
 
-function transactionReport(range, params) {
-  const list = listTransactions({
+async function transactionReport(range, params) {
+  const list = await listTransactions({
     from: range.from, to: range.to,
     service_code: params.service_code,
     type_code: params.type_code,
@@ -158,7 +158,7 @@ function transactionReport(range, params) {
     q: params.q,
     limit: 1000,
   });
-  const summary = rangeSummary(range.from, range.to, { currency: params.currency });
+  const summary = await rangeSummary(range.from, range.to, { currency: params.currency });
   return {
     title: 'Transaction Report',
     columns: txnColumns(),
@@ -175,12 +175,12 @@ function transactionReport(range, params) {
   };
 }
 
-function serviceReport(serviceCode, range, params) {
-  const list = listTransactions({
+async function serviceReport(serviceCode, range, params) {
+  const list = await listTransactions({
     from: range.from, to: range.to, service_code: serviceCode,
     currency: params.currency, q: params.q, status: params.status, limit: 1000,
   });
-  const summary = rangeSummary(range.from, range.to, { service_code: serviceCode, currency: params.currency });
+  const summary = await rangeSummary(range.from, range.to, { service_code: serviceCode, currency: params.currency });
   return {
     title: `${serviceCode === 'fastpay' ? 'FastPay' : 'NassWallet'} Report`,
     columns: txnColumns(),
@@ -197,8 +197,7 @@ function serviceReport(serviceCode, range, params) {
   };
 }
 
-function customerDebtReport(range, params) {
-  const db = getDb();
+async function customerDebtReport(range, params) {
   const where = [`t.customer_id IS NOT NULL`, `t.status = 'completed'`, `tt.code IN ('credit_sale','customer_payment')`];
   const p = [];
   if (params.currency) { where.push('t.currency = ?'); p.push(params.currency); }
@@ -207,20 +206,19 @@ function customerDebtReport(range, params) {
     const like = `%${params.q}%`;
     p.push(like, like, like);
   }
-  const rows = db
-    .prepare(
-      `SELECT c.code, c.full_name, c.phone, t.currency,
-              SUM(CASE WHEN tt.code='credit_sale' THEN t.amount_minor ELSE 0 END) AS credit_minor,
-              SUM(CASE WHEN tt.code='customer_payment' THEN t.amount_minor ELSE 0 END) AS paid_minor
-       FROM transactions t
-       JOIN transaction_types tt ON tt.id = t.type_id
-       JOIN customers c ON c.id = t.customer_id
-       WHERE ${where.join(' AND ')}
-       GROUP BY c.id, t.currency
-       HAVING credit_minor <> paid_minor
-       ORDER BY (credit_minor - paid_minor) DESC`
-    )
-    .all(...p);
+  const rows = await all(
+    `SELECT c.code, c.full_name, c.phone, t.currency,
+            SUM(CASE WHEN tt.code='credit_sale' THEN t.amount_minor ELSE 0 END) AS credit_minor,
+            SUM(CASE WHEN tt.code='customer_payment' THEN t.amount_minor ELSE 0 END) AS paid_minor
+     FROM transactions t
+     JOIN transaction_types tt ON tt.id = t.type_id
+     JOIN customers c ON c.id = t.customer_id
+     WHERE ${where.join(' AND ')}
+     GROUP BY c.id, t.currency
+     HAVING credit_minor <> paid_minor
+     ORDER BY (credit_minor - paid_minor) DESC`,
+    ...p
+  );
 
   const totals = {};
   for (const r of rows) {
@@ -252,8 +250,8 @@ function customerDebtReport(range, params) {
   };
 }
 
-function expenseReport(range, params) {
-  const list = listExpenses({ from: range.from, to: range.to, currency: params.currency, category_id: params.category_id, q: params.q, limit: 1000 });
+async function expenseReport(range, params) {
+  const list = await listExpenses({ from: range.from, to: range.to, currency: params.currency, category_id: params.category_id, q: params.q, limit: 1000 });
   return {
     title: 'Expense Report',
     columns: [
@@ -281,35 +279,32 @@ function expenseReport(range, params) {
   };
 }
 
-function commissionReport(range, params) {
-  const db = getDb();
+async function commissionReport(range, params) {
   const where = [`t.status = 'completed'`, 't.biz_date >= ?', 't.biz_date <= ?', 't.commission_minor > 0'];
   const p = [range.from, range.to];
   if (params.currency) { where.push('t.currency = ?'); p.push(params.currency); }
   if (params.service_code) { where.push('s.code = ?'); p.push(params.service_code); }
-  const rows = db
-    .prepare(
-      `SELECT t.tx_number, t.biz_date, t.amount_minor, t.commission_minor, t.currency,
-              s.name AS service_name, tt.name AS type_name, c.full_name AS customer_name, u.full_name AS created_by_name
-       FROM transactions t
-       JOIN services s ON s.id = t.service_id
-       JOIN transaction_types tt ON tt.id = t.type_id
-       LEFT JOIN customers c ON c.id = t.customer_id
-       LEFT JOIN users u ON u.id = t.created_by
-       WHERE ${where.join(' AND ')}
-       ORDER BY t.biz_date DESC, t.id DESC LIMIT 2000`
-    )
-    .all(...p);
+  const rows = await all(
+    `SELECT t.tx_number, t.biz_date, t.amount_minor, t.commission_minor, t.currency,
+            s.name AS service_name, tt.name AS type_name, c.full_name AS customer_name, u.full_name AS created_by_name
+     FROM transactions t
+     JOIN services s ON s.id = t.service_id
+     JOIN transaction_types tt ON tt.id = t.type_id
+     LEFT JOIN customers c ON c.id = t.customer_id
+     LEFT JOIN users u ON u.id = t.created_by
+     WHERE ${where.join(' AND ')}
+     ORDER BY t.biz_date DESC, t.id DESC LIMIT 2000`,
+    ...p
+  );
 
-  const byService = db
-    .prepare(
-      `SELECT s.name AS service_name, t.currency, SUM(t.commission_minor) AS commission_minor, COUNT(*) AS count
-       FROM transactions t JOIN services s ON s.id = t.service_id
-       WHERE t.status='completed' AND t.biz_date >= ? AND t.biz_date <= ? AND t.commission_minor > 0
-         ${params.currency ? 'AND t.currency = ?' : ''}
-       GROUP BY s.name, t.currency`
-    )
-    .all(...(params.currency ? [range.from, range.to, params.currency] : [range.from, range.to]));
+  const byService = await all(
+    `SELECT s.name AS service_name, t.currency, SUM(t.commission_minor) AS commission_minor, COUNT(*) AS count
+     FROM transactions t JOIN services s ON s.id = t.service_id
+     WHERE t.status='completed' AND t.biz_date >= ? AND t.biz_date <= ? AND t.commission_minor > 0
+       ${params.currency ? 'AND t.currency = ?' : ''}
+     GROUP BY s.name, t.currency`,
+    ...(params.currency ? [range.from, range.to, params.currency] : [range.from, range.to])
+  );
 
   const totals = {};
   for (const r of rows) totals[r.currency] = (totals[r.currency] || 0) + r.commission_minor;
@@ -343,39 +338,39 @@ function commissionReport(range, params) {
   };
 }
 
-function cashFlowReport(range, params) {
-  const db = getDb();
+async function cashFlowReport(range, params) {
   const currency = params.currency || null;
-  const cashIds = db.prepare(`SELECT id, code, name FROM accounts WHERE kind='cash' AND is_active=1`).all();
+  const cashIds = await all(`SELECT id, code, name FROM accounts WHERE kind='cash' AND is_active=1`);
   const marks = cashIds.map(() => '?').join(',');
   const p = [range.from, range.to];
   let curClause = '';
   if (currency) { curClause = ' AND l.currency = ?'; p.push(currency); }
 
-  const rows = db
-    .prepare(
-      `SELECT l.biz_date AS date, l.currency,
-              COALESCE(SUM(CASE WHEN l.direction='in' THEN l.amount_minor ELSE 0 END),0) AS cash_in_minor,
-              COALESCE(SUM(CASE WHEN l.direction='out' THEN l.amount_minor ELSE 0 END),0) AS cash_out_minor
-       FROM ledger_entries l
-       WHERE l.account_id IN (${marks}) AND l.biz_date >= ? AND l.biz_date <= ?${curClause}
-       GROUP BY l.biz_date, l.currency
-       ORDER BY l.biz_date, l.currency`
-    )
-    .all(...cashIds.map((c) => c.id), ...p);
+  const rows = await all(
+    `SELECT l.biz_date AS date, l.currency,
+            COALESCE(SUM(CASE WHEN l.direction='in' THEN l.amount_minor ELSE 0 END),0) AS cash_in_minor,
+            COALESCE(SUM(CASE WHEN l.direction='out' THEN l.amount_minor ELSE 0 END),0) AS cash_out_minor
+     FROM ledger_entries l
+     WHERE l.account_id IN (${marks}) AND l.biz_date >= ? AND l.biz_date <= ?${curClause}
+     GROUP BY l.biz_date, l.currency
+     ORDER BY l.biz_date, l.currency`,
+    ...cashIds.map((c) => c.id),
+    ...p
+  );
 
   // opening cash before range
   const openings = {};
   for (const c of cashIds) {
-    for (const cur of currency ? [currency] : distinctCur(c.id)) {
-      const row = db
-        .prepare(
-          `SELECT COALESCE(SUM(CASE WHEN direction='in' THEN amount_minor ELSE 0 END),0) -
-                  COALESCE(SUM(CASE WHEN direction='out' THEN amount_minor ELSE 0 END),0) AS net
-           FROM ledger_entries WHERE account_id = ? AND currency = ? AND biz_date < ?`
-        )
-        .get(c.id, cur, range.from);
-      const acct = db.prepare('SELECT opening_balance_minor, currency FROM accounts WHERE id = ?').get(c.id);
+    for (const cur of currency ? [currency] : await distinctCur(c.id)) {
+      const row = await one(
+        `SELECT COALESCE(SUM(CASE WHEN direction='in' THEN amount_minor ELSE 0 END),0) -
+                COALESCE(SUM(CASE WHEN direction='out' THEN amount_minor ELSE 0 END),0) AS net
+         FROM ledger_entries WHERE account_id = ? AND currency = ? AND biz_date < ?`,
+        c.id,
+        cur,
+        range.from
+      );
+      const acct = await one('SELECT opening_balance_minor, currency FROM accounts WHERE id = ?', c.id);
       const opening = acct.currency === cur ? acct.opening_balance_minor : 0;
       const key = cur;
       openings[key] = (openings[key] || 0) + opening + row.net;
@@ -415,9 +410,9 @@ function cashFlowReport(range, params) {
   };
 }
 
-function distinctCur(accountId) {
-  const rows = getDb().prepare('SELECT DISTINCT currency FROM ledger_entries WHERE account_id = ?').all(accountId);
-  const def = getDb().prepare('SELECT currency FROM accounts WHERE id = ?').get(accountId);
+async function distinctCur(accountId) {
+  const rows = await all('SELECT DISTINCT currency FROM ledger_entries WHERE account_id = ?', accountId);
+  const def = await one('SELECT currency FROM accounts WHERE id = ?', accountId);
   const set = new Set(rows.map((r) => r.currency));
   if (def) set.add(def.currency);
   return [...set];
