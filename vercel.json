@@ -3,7 +3,7 @@
     "arn1"
   ],
   "buildCommand": "npm run build",
-  "outputDirectory": "client/dist",
+  "outputDirectory": "dist",
   "functions": {
     "api/[...all].js": {
       "includeFiles": "server/src/db/**"
