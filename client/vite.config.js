@@ -17,7 +17,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: path.join(ROOT, 'client', 'dist'),
+    outDir: path.join(ROOT, 'dist'),
     emptyOutDir: true,
   },
 });
