@@ -276,6 +276,45 @@ CREATE INDEX IF NOT EXISTS idx_ronaki_payments_contract ON ronaki_payments(contr
 CREATE INDEX IF NOT EXISTS idx_ronaki_payments_date     ON ronaki_payments(biz_date);
 
 -- ------------------------------------------------------------
+-- Dealer Inventory (stock-able dealer balances for FIB, CardHouse, FastPay, NassWallet)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS dealer_inventory (
+  id                   INTEGER PRIMARY KEY,
+  account_id           INTEGER NOT NULL REFERENCES accounts(id),        -- FIB, CARDHOUSE, FASTPAY, NASSWALLET
+  currency             TEXT NOT NULL REFERENCES currencies(code),
+  -- Wholesale side (purchases)
+  wholesale_qty        INTEGER NOT NULL DEFAULT 0,                      -- total units bought wholesale
+  wholesale_cost_minor INTEGER NOT NULL DEFAULT 0,                     -- total wholesale cost
+  -- Retail side (sales)
+  retail_qty           INTEGER NOT NULL DEFAULT 0,                      -- total units sold retail
+  retail_revenue_minor INTEGER NOT NULL DEFAULT 0,                     -- total retail revenue
+  -- Computed
+  current_qty          INTEGER NOT NULL DEFAULT 0,                      -- on hand = wholesale_qty - retail_qty
+  profit_minor         INTEGER NOT NULL DEFAULT 0,                     -- retail_revenue - wholesale_cost
+  -- Timestamps
+  created_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+  updated_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dealer_inventory_unique ON dealer_inventory(account_id, currency);
+CREATE INDEX IF NOT EXISTS idx_dealer_inventory_account ON dealer_inventory(account_id);
+
+-- Dealer inventory movements (audit trail for stock changes)
+CREATE TABLE IF NOT EXISTS dealer_inventory_movements (
+  id                    INTEGER PRIMARY KEY,
+  inventory_id          INTEGER NOT NULL REFERENCES dealer_inventory(id),
+  movement_type         TEXT NOT NULL CHECK (movement_type IN ('purchase','sale','adjustment')), -- wholesale purchase, retail sale, manual adjust
+  qty_change            INTEGER NOT NULL,                               -- + for purchase, - for sale
+  wholesale_cost_minor  INTEGER NOT NULL DEFAULT 0,                     -- cost for purchases
+  retail_price_minor    INTEGER NOT NULL DEFAULT 0,                     -- price for sales
+  reference_txn_id      INTEGER REFERENCES transactions(id),            -- linked transaction
+  notes                 TEXT,
+  created_by            INTEGER REFERENCES users(id),
+  created_at            TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_dealer_movements_inventory ON dealer_inventory_movements(inventory_id);
+CREATE INDEX IF NOT EXISTS idx_dealer_movements_date ON dealer_inventory_movements(created_at);
+
+-- ------------------------------------------------------------
 -- Receipts (Phase 10)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS receipts (

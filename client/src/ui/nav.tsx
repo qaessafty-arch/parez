@@ -32,6 +32,8 @@ export const NAV: NavGroup[] = [
     items: [
       { to: '/fastpay', key: 'nav_fastpay', perm: 'transaction.view', icon: Icon('M12 3l9 5-9 5-9-5 9-5zm-9 9l9 5 9-5') },
       { to: '/nasswallet', key: 'nav_nasswallet', perm: 'transaction.view', icon: Icon('M3 7h18v10H3V7zm3 3h.01M18 14h.01') },
+      { to: '/fib', key: 'nav_fib', perm: 'transaction.view', icon: Icon('M3 7h18v10H3V7zm3 3h.01M18 14h.01') },
+      { to: '/cardhouse', key: 'nav_cardhouse', perm: 'transaction.view', icon: Icon('M3 7h18v10H3V7zm3 3h.01M18 14h.01') },
       { to: '/ronaki', key: 'nav_ronaki', perm: 'ronaki.view', icon: Icon('M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6') },
       { to: '/expenses', key: 'nav_expenses', perm: 'expense.view', icon: Icon('M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6') },
       { to: '/income', key: 'nav_income', perm: 'report.view', icon: Icon('M3 17l6-6 4 4 8-8M14 7h7v7') },
@@ -60,6 +62,9 @@ export const NAV: NavGroup[] = [
 export const QUICK: NavItem[] = [
   { to: '/transactions', key: 'new_transaction', perm: 'transaction.create', icon: Icon('M12 5v14M5 12h14', 20) },
   { to: '/fastpay', key: 'nav_fastpay', perm: 'transaction.view', icon: Icon('M12 3l9 5-9 5-9-5 9-5zm-9 9l9 5 9-5') },
+  { to: '/nasswallet', key: 'nav_nasswallet', perm: 'transaction.view', icon: Icon('M3 7h18v10H3V7zm3 3h.01M18 14h.01') },
+  { to: '/fib', key: 'nav_fib', perm: 'transaction.view', icon: Icon('M3 7h18v10H3V7zm3 3h.01M18 14h.01') },
+  { to: '/cardhouse', key: 'nav_cardhouse', perm: 'transaction.view', icon: Icon('M3 7h18v10H3V7zm3 3h.01M18 14h.01') },
   { to: '/ronaki', key: 'nav_ronaki', perm: 'ronaki.view', icon: Icon('M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6') },
   { to: '/expenses', key: 'nav_expenses', perm: 'expense.view', icon: Icon('M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6') },
 ];

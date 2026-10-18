@@ -89,7 +89,7 @@ try {
   const meta = (await call('/api/meta')).json;
   check('meta user admin', meta?.user?.role_code === 'admin' && meta?.shopName === 'Smoke Shop');
   const master = (await call('/api/master/master')).json;
-  check('master data', master?.services?.length === 4 && master?.accounts?.length >= 5 && master?.transaction_types?.length >= 10);
+  check('master data', master?.services?.length === 6 && master?.accounts?.length >= 7 && master?.transaction_types?.length >= 10);
   const csrfMissing = await fetch(BASE + '/api/customers', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie },
     body: JSON.stringify({ full_name: 'No CSRF' }),

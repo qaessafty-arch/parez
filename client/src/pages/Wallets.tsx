@@ -17,7 +17,7 @@ import { useSession } from '../App';
 
 const RANGES = ['today', 'yesterday', 'week', 'month'] as const;
 
-export default function Wallets({ serviceCode }: { serviceCode: 'fastpay' | 'nasswallet' }) {
+export default function Wallets({ serviceCode }: { serviceCode: 'fastpay' | 'nasswallet' | 'fib' | 'cardhouse' }) {
   const { t } = useI18n();
   const { can } = useSession();
   const [params, setParams] = useSearchParams();
@@ -31,7 +31,10 @@ export default function Wallets({ serviceCode }: { serviceCode: 'fastpay' | 'nas
   );
   const txns = useLoad(() => api<any>(`/api/${serviceCode}/transactions?${qs}&limit=50`), [serviceCode, qs]);
 
-  const title = serviceCode === 'fastpay' ? t('nav_fastpay') : t('nav_nasswallet');
+  const title = serviceCode === 'fastpay' ? t('nav_fastpay')
+  : serviceCode === 'nasswallet' ? t('nav_nasswallet')
+  : serviceCode === 'fib' ? t('nav_fib')
+  : t('nav_cardhouse');
 
   return (
     <div>

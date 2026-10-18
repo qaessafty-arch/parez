@@ -3,7 +3,8 @@ import { api, errText } from '../lib/api';
 import { useSession } from '../App';
 import { useI18n, LANGS } from '../lib/i18n';
 import {
-  Badge, Button, Card, Field, Input, PageHeader, Spinner, Textarea, useLoad, useToast,
+  Badge, Button, Card, Field, Input, PageHeader, Spinner, useLoad, useToast,
+  CommissionRulesEditor,
 } from '../ui/kit';
 
 export default function Settings() {
@@ -133,8 +134,8 @@ export default function Settings() {
             <Field label={t('backup_warn_days')}><Input value={f['backup.warn_days'] ?? ''} onChange={set('backup.warn_days')} dir="ltr" /></Field>
             <Field label={t('receipt_prefix')}><Input value={f['receipt.prefix'] ?? ''} onChange={set('receipt.prefix')} dir="ltr" /></Field>
             <Field label={t('receipt_footer')} className="sm:col-span-2"><Input value={f['receipt.footer'] ?? ''} onChange={set('receipt.footer')} /></Field>
-            <Field label={t('commission_rules')} hint='[{"service_code":"fastpay","currency":"IQD","percent":1}]' className="sm:col-span-2">
-              <Textarea rows={3} value={f['commission.rules'] ?? ''} onChange={set('commission.rules')} dir="ltr" className="font-mono text-xs" />
+            <Field label={t('commission_rules')} className="sm:col-span-2">
+              <CommissionRulesEditor value={f['commission.rules'] ?? '[]'} onChange={(v: string) => setF((x) => ({ ...x, 'commission.rules': v }))} />
             </Field>
           </div>
           {error && <div className="mt-4 rounded-lg bg-out-50 px-3 py-2 text-sm text-out-600">{error}</div>}

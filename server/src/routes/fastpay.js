@@ -83,4 +83,5 @@ router.post('/transactions', requirePermission('transaction.create'), async (req
   res.status(201).json({ transaction: await getTransaction(saved.id), receipt: receiptRow });
 });
 
+
 export default router;

@@ -45,7 +45,7 @@ export default function Audit() {
       {data && (
         <Card>
           {data.rows.length === 0 ? <EmptyState /> : (
-            <Table head={[t('date'), t('action'), t('entity'), t('created_by'), t('reason'), t('old_value'), t('new_value'), t('ip')]}>
+            <Table head={[t('date'), t('action'), t('entity'), t('created_by'), t('reason'), t('old_value'), t('new_value'), t('ip'), t('actions')]}>
               {data.rows.map((a: any) => (
                 <tr key={a.id} className="hover:bg-surface align-top">
                   <Td className="num text-xs whitespace-nowrap">{String(a.created_at).slice(0, 16).replace('T', ' ')}</Td>
@@ -56,6 +56,15 @@ export default function Audit() {
                   <Td className="text-[11px] text-text-secondary max-w-40 break-all">{fmtVal(a.old_value)}</Td>
                   <Td className="text-[11px] max-w-40 break-all">{fmtVal(a.new_value)}</Td>
                   <Td className="num text-[11px] text-text-secondary">{a.ip || '—'}</Td>
+                  <Td className="text-center">
+                    <Button variant="ghost" size="sm" className="text-err" onClick={async () => {
+                      if (!confirm(`${t('confirm')}?`)) return;
+                      try {
+                        await api(`/api/audit/${a.id}`, { method: 'DELETE' });
+                        window.location.reload();
+                      } catch {}
+                    }}>{t('delete')}</Button>
+                  </Td>
                 </tr>
               ))}
             </Table>
