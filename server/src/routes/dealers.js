@@ -17,12 +17,12 @@ import {
 const router = Router();
 
 // List all dealer inventory (admin view)
-router.get('/', requirePermission('transaction.view'), (req, res) => {
+router.get('/', requirePermission('transaction.view'), async (req, res) => {
   res.json(listInventory());
 });
 
 // Summary for closing
-router.get('/summary', requirePermission('transaction.view'), (req, res) => {
+router.get('/summary', requirePermission('transaction.view'), async (req, res) => {
   const q = parse(
     z.object({
       date: zBizDate.optional(),
@@ -34,7 +34,7 @@ router.get('/summary', requirePermission('transaction.view'), (req, res) => {
 });
 
 // Get inventory for specific account
-router.get('/:accountCode', requirePermission('transaction.view'), (req, res) => {
+router.get('/:accountCode', requirePermission('transaction.view'), async (req, res) => {
   const q = parse(
     z.object({
       currency: z.enum(['IQD', 'USD']).optional(),
@@ -47,7 +47,7 @@ router.get('/:accountCode', requirePermission('transaction.view'), (req, res) =>
 });
 
 // Get movements for an inventory
-router.get('/:accountCode/movements', requirePermission('transaction.view'), (req, res) => {
+router.get('/:accountCode/movements', requirePermission('transaction.view'), async (req, res) => {
   const q = parse(
     z.object({
       currency: z.enum(['IQD', 'USD']).optional(),
@@ -62,7 +62,7 @@ router.get('/:accountCode/movements', requirePermission('transaction.view'), (re
 });
 
 // Record wholesale purchase (buy stock)
-router.post('/purchase', requirePermission('transaction.create'), (req, res) => {
+router.post('/purchase', requirePermission('transaction.create'), async (req, res) => {
   const body = parse(
     z.object({
       account_code: z.enum(['FASTPAY', 'NASSWALLET', 'FIB', 'CARDHOUSE']),
@@ -79,7 +79,7 @@ router.post('/purchase', requirePermission('transaction.create'), (req, res) => 
 });
 
 // Record retail sale (sell stock)
-router.post('/sale', requirePermission('transaction.create'), (req, res) => {
+router.post('/sale', requirePermission('transaction.create'), async (req, res) => {
   const body = parse(
     z.object({
       account_code: z.enum(['FASTPAY', 'NASSWALLET', 'FIB', 'CARDHOUSE']),
@@ -96,7 +96,7 @@ router.post('/sale', requirePermission('transaction.create'), (req, res) => {
 });
 
 // Manual adjustment
-router.post('/adjust', requirePermission('transaction.edit'), (req, res) => {
+router.post('/adjust', requirePermission('transaction.edit'), async (req, res) => {
   const body = parse(
     z.object({
       account_code: z.enum(['FASTPAY', 'NASSWALLET', 'FIB', 'CARDHOUSE']),

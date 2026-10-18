@@ -5,18 +5,17 @@
 import { Router } from 'express';
 import { requirePermission } from '../middleware/index.js';
 import { parse, z, zBizDate, zReference } from '../lib/validate.js';
-import { createTransaction, listTransactions, getTransaction, deleteTransaction } from '../services/transactions.js';
+import { createTransaction, listTransactions, getTransaction } from '../services/transactions.js';
 import { walletSummary, walletAccount } from '../services/wallets.js';
 import { createReceiptForTransaction } from '../services/receipts.js';
 import { resolveRange } from '../lib/dates.js';
-import { getDb } from '../db/index.js';
 
 const router = Router();
 router.use(requirePermission('fib.view'));
 
 const requireCreate = requirePermission('fib.create');
 
-router.get('/summary', (req, res) => {
+router.get('/summary', async (req, res) => {
   const q = parse(
     z.object({
       range: z.string().default('today'),
@@ -26,15 +25,15 @@ router.get('/summary', (req, res) => {
     }),
     req.query
   );
-  res.json(walletSummary('fib', q));
+  res.json(await walletSummary('fib', q));
 });
 
-router.get('/account', (req, res) => {
-  const acct = walletAccount('fib');
+router.get('/account', async (req, res) => {
+  const acct = await walletAccount('fib');
   res.json({ account: acct });
 });
 
-router.get('/transactions', (req, res) => {
+router.get('/transactions', async (req, res) => {
   const q = parse(
     z.object({
       from: zBizDate.optional(), to: zBizDate.optional(), range: z.string().optional(),
@@ -51,10 +50,10 @@ router.get('/transactions', (req, res) => {
     const r = resolveRange(range);
     span = { from: r.from, to: r.to };
   }
-  res.json(listTransactions({ ...rest, ...span, service_code: 'fib' }));
+  res.json(await listTransactions({ ...rest, ...span, service_code: 'fib' }));
 });
 
-router.post('/transactions', requireCreate, (req, res) => {
+router.post('/transactions', requireCreate, async (req, res) => {
   const body = parse(
     z.object({
       type_code: z.string(),
@@ -75,25 +74,16 @@ router.post('/transactions', requireCreate, (req, res) => {
     }),
     req.body
   );
-  const defaultAccount = walletAccount('fib');
+  const defaultAccount = await walletAccount('fib');
   const { receipt, ...input } = body;
-  const saved = createTransaction(
+  const saved = await createTransaction(
     { ...input, service_code: 'fib', account_id: input.account_id || defaultAccount.id },
     req.user,
     req.ip
   );
-  const receiptRow = receipt === false ? null : createReceiptForTransaction(saved.id, req.user, req.ip, { silentDuplicate: true });
-  res.status(201).json({ transaction: getTransaction(saved.id), receipt: receiptRow });
+  const receiptRow = receipt === false ? null : await createReceiptForTransaction(saved.id, req.user, req.ip, { silentDuplicate: true });
+  res.status(201).json({ transaction: await getTransaction(saved.id), receipt: receiptRow });
 });
 
-router.delete('/transactions/:id', requirePermission('transaction.delete'), (req, res) => {
-  const db = getDb();
-  const id = Number(req.params.id);
-  const txn = db.prepare('SELECT * FROM transactions WHERE id = ? AND service_code = ?').get(id, 'fib');
-  if (!txn) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Transaction not found' } });
-
-  deleteTransaction(id, req.user, req.ip);
-  res.json({ ok: true });
-});
 
 export default router;

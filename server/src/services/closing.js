@@ -58,9 +58,9 @@ export async function closingPreview(date = today()) {
   // Dealer inventory (FIB, CardHouse, FastPay, NassWallet)
   const dealerInventory = [];
   for (const code of ['FASTPAY', 'NASSWALLET', 'FIB', 'CARDHOUSE']) {
-    const acct = db.prepare('SELECT * FROM accounts WHERE code = ?').get(code);
+    const acct = await one('SELECT * FROM accounts WHERE code = ?', code);
     if (!acct) continue;
-    const inv = db.prepare('SELECT * FROM dealer_inventory WHERE account_id = ? AND currency = ?').get(acct.id, acct.currency);
+    const inv = await one('SELECT * FROM dealer_inventory WHERE account_id = ? AND currency = ?', acct.id, acct.currency);
     if (inv) {
       dealerInventory.push({
         code: acct.code,
@@ -131,9 +131,9 @@ export async function closeDay({ date = today(), actual = {}, note = '' }, user,
     // Dealer inventory snapshot for closing
     const dealerInventory = [];
     for (const code of ['FASTPAY', 'NASSWALLET', 'FIB', 'CARDHOUSE']) {
-      const acct = conn.prepare('SELECT * FROM accounts WHERE code = ?').get(code);
+      const acct = await one('SELECT * FROM accounts WHERE code = ?', code);
       if (!acct) continue;
-      const inv = conn.prepare('SELECT * FROM dealer_inventory WHERE account_id = ? AND currency = ?').get(acct.id, acct.currency);
+      const inv = await one('SELECT * FROM dealer_inventory WHERE account_id = ? AND currency = ?', acct.id, acct.currency);
       if (inv) {
         dealerInventory.push({
           code: acct.code,

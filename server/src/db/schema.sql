@@ -157,9 +157,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   payment_method     TEXT NOT NULL DEFAULT 'cash' REFERENCES payment_methods(code),
   wallet_number      TEXT,                           -- FastPay / NassWallet account no
   reference_no       TEXT,                           -- provider reference
-  card_type          TEXT,                           -- CardHouse: pubg/steam/apple/google/telecom/custom
-  wholesale_cost_minor INTEGER,                      -- dealer wholesale cost (for stock-able items)
-  retail_price_minor INTEGER,                        -- retail selling price (for stock-able items)
   description        TEXT,
   fx_rate            TEXT,                           -- optional decimal string
   fx_currency        TEXT,                           -- optional converted currency
