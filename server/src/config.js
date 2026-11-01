@@ -38,7 +38,7 @@ export const config = {
   dbAuthToken: process.env.TURSO_AUTH_TOKEN || undefined,
   dataDir: DATA_DIR,
   backupDir: path.join(DATA_DIR, 'backups'),
-  clientDist: path.join(ROOT, 'client', 'dist'),
+  clientDist: path.join(ROOT, 'dist'),
   isProd: process.env.NODE_ENV === 'production',
   sessionTtlHours: Number(process.env.SESSION_TTL_HOURS || 12),
   // Security
