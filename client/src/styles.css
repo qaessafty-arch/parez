@@ -31,9 +31,31 @@
   --color-transfer-bg: #F1F5F9;
   --color-transfer-text: #64748B;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  /* Names the components use but the theme never defined. Without them borders
+     fell back to black and money/error colors did not apply. */
+  --color-border-color: var(--color-border);
+  --color-text-primary: var(--color-text);
+  --color-surface-2: #F1F5F9;
+  --color-in-50: #ECFDF5;
+  --color-in-500: #10B981;
+  --color-in-600: #059669;
+  --color-out-50: #FEF2F2;
+  --color-out-500: #EF4444;
+  --color-out-600: #DC2626;
+  --color-info-600: #2563EB;
+  --color-err: var(--color-danger);
+  --color-destructive: var(--color-danger);
+  --color-destructive-foreground: #FFFFFF;
+  --color-success-foreground: #FFFFFF;
+  --color-warning-foreground: #FFFFFF;
+  --color-ink-800: #1E293B;
+  --color-ink-900: #0F172A;
+  --color-ink-950: #020617;
+
+  /* Tighter corners: 14px made inputs and buttons look like pills. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
 
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -68,9 +90,9 @@
   --color-out-text: #DC2626;
   --color-transfer-bg: #F1F5F9;
   --color-transfer-text: #64748B;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
@@ -107,6 +129,15 @@
   --color-out-text: #FCA5A5;
   --color-transfer-bg: #334155;
   --color-transfer-text: #94A3B8;
+
+  --color-surface-2: #273449;
+  --color-in-50: #064E3B;
+  --color-in-500: #34D399;
+  --color-in-600: #6EE7B7;
+  --color-out-50: #7F1D1D;
+  --color-out-500: #FCA5A5;
+  --color-out-600: #FCA5A5;
+  --color-info-600: #60A5FA;
 }
 
 /* ============================================================
@@ -154,9 +185,9 @@ textarea {
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--bg-muted) 25%,
-    var(--bg-surface) 50%,
-    var(--bg-muted) 75%
+    var(--color-muted) 25%,
+    var(--color-surface) 50%,
+    var(--color-muted) 75%
   );
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.6s infinite ease-in-out;
@@ -188,17 +219,17 @@ textarea {
    Global form field contrast — both themes, no glass bleed
    ============================================================ */
 :root {
-  --field-bg: var(--color-bg-muted);        /* #F1F5F9 light / #334155 dark */
-  --field-border: var(--color-border-input); /* #CBD5E1 light / #64748B dark */
+  --field-bg: var(--color-muted);
+  --field-border: var(--color-border-input);
   --field-focus-ring: var(--color-primary);
-  --field-focus-bg: var(--color-bg-surface);
+  --field-focus-bg: var(--color-surface);
 }
 
 /* All raw inputs, selects, textareas — solid by default */
 input, select, textarea {
   background-color: var(--field-bg) !important;
-  border: 1.5px solid var(--field-border) !important;
-  color: var(--color-text-primary) !important;
+  border: 1px solid var(--field-border) !important;
+  color: var(--color-text) !important;
   transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 input::placeholder, select::placeholder, textarea::placeholder {
@@ -217,15 +248,19 @@ input:disabled, select:disabled, textarea:disabled {
   opacity: 1;
 }
 
+/* Dropdown arrow sits at the end of the field: right in English, left in Kurdish/Arabic. */
+select { background-position: right 0.6rem center; }
+[dir="rtl"] select { background-position: left 0.6rem center; }
+
 /* Table cells — always solid surface */
 td, th {
-  background-color: var(--color-bg-surface) !important;
-  border-color: var(--color-border-color) !important;
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
 }
 
 /* Sticky bars — never transparent */
 .sticky-top, .sticky-bottom, header[class*="sticky"], nav[class*="sticky"] {
-  background-color: var(--color-bg-surface) !important;
+  background-color: var(--color-surface) !important;
   backdrop-filter: none !important;
 }
 

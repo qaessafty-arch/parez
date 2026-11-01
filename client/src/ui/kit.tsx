@@ -234,7 +234,6 @@ export function Select({ className, children, ...props }: SelectHTMLAttributes<H
       style={{
         backgroundImage:
           "url(\"data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2355647e' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")",
-        backgroundPosition: 'left 0.6rem center',
         ...props.style,
       }}
     >
