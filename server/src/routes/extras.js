@@ -78,13 +78,19 @@ auditRouter.get('/', async (req, res) => {
       to: z.string().optional(),
       action: z.string().optional(),
       entity: z.string().optional(),
-      search: z.string().optional(),
+      user: z.string().max(80).optional(),
+      search: z.string().max(200).optional(),
       limit: z.coerce.number().int().min(1).max(500).optional().default(100),
       offset: z.coerce.number().int().min(0).optional().default(0),
     }),
     req.query
   );
   res.json(await listAudit(q));
+});
+
+auditRouter.get('/entities', async (req, res) => {
+  const rows = await all('SELECT DISTINCT entity FROM audit_logs ORDER BY entity');
+  res.json({ entities: rows.map((x) => x.entity) });
 });
 
 auditRouter.get('/actions', async (req, res) => {
