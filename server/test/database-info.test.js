@@ -32,3 +32,11 @@ test('databaseInfo: never includes a token or password', async () => {
   assert.ok(!JSON.stringify(info).toLowerCase().includes('token'));
   assert.ok(!('authToken' in info));
 });
+
+test('databaseTarget: names the database without any credentials', async () => {
+  const { databaseTarget } = await import('../src/services/settings.js');
+  const target = databaseTarget();
+  assert.ok(['local', 'turso'].includes(target.kind));
+  assert.equal(typeof target.host, 'string');
+  assert.ok(!JSON.stringify(target).toLowerCase().includes('token'));
+});

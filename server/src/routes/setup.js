@@ -4,6 +4,7 @@ import { all, one, run, transaction } from '../db/index.js';
 import { seedMaster } from '../db/seed.js';
 import { setupNeeded, hashPassword } from '../services/auth.js';
 import { audit } from '../services/audit.js';
+import { databaseTarget } from '../services/settings.js';
 import { parse, z } from '../lib/validate.js';
 import { conflict, validationError } from '../lib/errors.js';
 import { config } from '../config.js';
@@ -11,7 +12,10 @@ import { config } from '../config.js';
 const router = Router();
 
 router.get('/status', async (req, res) => {
-  res.json({ needsSetup: await setupNeeded() });
+  const needsSetup = await setupNeeded();
+  // Only while nothing is set up: say which database this server is using (host
+  // only, never a token), so a wrong or temporary database is easy to spot.
+  res.json(needsSetup ? { needsSetup, database: databaseTarget() } : { needsSetup });
 });
 
 const setupSchema = z.object({
