@@ -110,7 +110,7 @@ export async function shopInfo() {
  * Settings page so the owner can tell a live shop database from an empty one.
  * Never includes the auth token.
  */
-export async function databaseInfo() {
+export function databaseTarget() {
   const url = config.dbUrl;
   const local = url.startsWith('file:');
   let host = 'local file';
@@ -121,10 +121,13 @@ export async function databaseInfo() {
       host = 'remote database';
     }
   }
+  return { kind: local ? 'local' : 'turso', host };
+}
+
+export async function databaseInfo() {
   const count = async (table) => (await one(`SELECT COUNT(*) AS n FROM ${table}`)).n;
   return {
-    kind: local ? 'local' : 'turso',
-    host,
+    ...databaseTarget(),
     users: await count('users'),
     customers: await count('customers'),
     transactions: await count('transactions'),

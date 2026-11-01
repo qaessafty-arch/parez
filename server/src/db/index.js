@@ -51,7 +51,18 @@ export function closeDb() {
 
 /** Run schema + pending migrations once per process. Safe to call repeatedly. */
 export function ready() {
-  if (!readyPromise) readyPromise = migrate(getClient());
+  if (!readyPromise) {
+    if (process.env.VERCEL && config.dbUrl.startsWith('file:')) {
+      // Vercel has no durable disk. Without TURSO_DATABASE_URL the app would
+      // quietly use a temporary file and lose everything. Fail loudly instead.
+      readyPromise = Promise.reject(
+        new Error('TURSO_DATABASE_URL is not set on this deployment, so there is no durable database.')
+      );
+      readyPromise.catch(() => {});
+    } else {
+      readyPromise = migrate(getClient());
+    }
+  }
   return readyPromise;
 }
 
