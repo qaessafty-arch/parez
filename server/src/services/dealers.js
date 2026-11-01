@@ -29,12 +29,25 @@ export async function getInventory(accountId, currency) {
 
 /** List all dealer inventory with account info. */
 export async function listInventory() {
-  return await all(`
-    SELECT di.*, a.code AS account_code, a.name AS account_name, a.kind AS account_kind
-    FROM dealer_inventory di
-    JOIN accounts a ON a.id = di.account_id
-    ORDER BY a.sort_order, di.currency
-  `);
+  // Every active dealer account is listed, with zeros until its first
+  // purchase, so a new shop can record its first stock from the page.
+  return await all(
+    `SELECT COALESCE(di.id, 0) AS id,
+            a.id AS account_id,
+            a.currency AS currency,
+            COALESCE(di.wholesale_qty, 0) AS wholesale_qty,
+            COALESCE(di.wholesale_cost_minor, 0) AS wholesale_cost_minor,
+            COALESCE(di.retail_qty, 0) AS retail_qty,
+            COALESCE(di.retail_revenue_minor, 0) AS retail_revenue_minor,
+            COALESCE(di.current_qty, 0) AS current_qty,
+            COALESCE(di.profit_minor, 0) AS profit_minor,
+            a.code AS account_code, a.name AS account_name, a.kind AS account_kind
+     FROM accounts a
+     LEFT JOIN dealer_inventory di ON di.account_id = a.id AND di.currency = a.currency
+     WHERE a.code IN (${DEALER_ACCOUNT_CODES.map(() => '?').join(',')}) AND a.is_active = 1
+     ORDER BY a.sort_order, a.currency`,
+    ...DEALER_ACCOUNT_CODES
+  );
 }
 
 /** Get inventory for a specific account code. */

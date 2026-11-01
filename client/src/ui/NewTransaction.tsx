@@ -163,7 +163,7 @@ export default function NewTransaction({ onClose, onCreated, serviceCode, typeCo
       >
         {/* Amount leads: it is the number the customer says out loud. */}
         <div className="sm:col-span-2">
-          <div className="rounded-xl border border-border-color bg-white p-4">
+          <div className="rounded-xl border border-border-color bg-surface p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
               <Field label={t('amount')} required error={amountInvalid ? t('invalid_amount') : null} className="flex-1">
                 <MoneyInput
@@ -197,6 +197,15 @@ export default function NewTransaction({ onClose, onCreated, serviceCode, typeCo
             </Select>
           </Field>
         )}
+
+        <Field label={t('type')} required className="sm:col-span-2">
+          <Select value={f.type_code} onChange={set('type_code')}>
+            {master.transaction_types
+              // Reversals and refunds are created from a transaction's own actions.
+              .filter((x) => x.code !== 'reversal' && x.code !== 'refund')
+              .map((x) => <option key={x.code} value={x.code}>{x.name}</option>)}
+          </Select>
+        </Field>
 
         <Field label={t('account')} required>
           <Select value={f.account_id} onChange={set('account_id')}>
@@ -359,7 +368,7 @@ function LedgerPreview({
   }, [amountMinor, commissionMinor, eff, accountName, counterName]);
 
   return (
-    <div className="rounded-xl border border-border-color/10 bg-white">
+    <div className="rounded-xl border border-border-color/10 bg-surface">
       <div className="flex items-center gap-2 border-b border-border-color/10 px-4 py-2.5">
         <span className="text-[13px] font-semibold text-text-secondary">{t('ledger_preview')}</span>
         <span className="ms-auto text-[11px] text-text-secondary">{t('will_post')}</span>
@@ -443,7 +452,7 @@ export function CustomerPicker({ value, onChange }: { value: string; onChange: (
         >✕</button>
       )}
       {open && (
-        <div className="absolute z-30 mt-1 max-h-52 w-full overflow-auto rounded-lg border border-border-color/10 bg-white py-1 shadow-lg">
+        <div className="absolute z-30 mt-1 max-h-52 w-full overflow-auto rounded-lg border border-border-color/10 bg-surface py-1 shadow-lg">
           <button
             type="button"
             className="block w-full px-3 py-2 text-start text-xs text-text-secondary hover:bg-surface"

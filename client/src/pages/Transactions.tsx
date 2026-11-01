@@ -151,7 +151,7 @@ export default function Transactions() {
       {loading && !data && <Card><SkeletonRows rows={8} cols={6} /></Card>}
 
       {data && (
-        <Card className={cls(refreshing && 'relative', refreshing && 'before:absolute before:inset-0 before:bg-white/50 before:z-10')}>
+        <Card className={cls(refreshing && 'relative', refreshing && 'before:absolute before:inset-0 before:bg-surface/50 before:z-10')}>
           {/* Totals are per currency — two currencies are two books. */}
           {data.totals.length > 0 && (
             <div className="flex flex-wrap gap-x-6 gap-y-1 border-b border-border-color/[.08] px-4 py-2.5 text-xs">

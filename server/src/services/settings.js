@@ -3,6 +3,7 @@ import { all, one, run, transaction } from '../db/index.js';
 import { nowIso } from '../lib/dates.js';
 import { validationError } from '../lib/errors.js';
 import { audit } from './audit.js';
+import { config } from '../config.js';
 
 export async function getSetting(key, fallback = null) {
   const row = await one('SELECT value FROM settings WHERE key = ?', key);
@@ -101,5 +102,31 @@ export async function shopInfo() {
     commission_rules: await getSetting('commission.rules', '[]'),
     backup_last_at: await getSetting('backup.last_at', ''),
     setup_completed: (await getSetting('setup.completed', 'false')) === 'true',
+  };
+}
+
+/**
+ * Which database this server is using, and how much is in it. Shown on the
+ * Settings page so the owner can tell a live shop database from an empty one.
+ * Never includes the auth token.
+ */
+export async function databaseInfo() {
+  const url = config.dbUrl;
+  const local = url.startsWith('file:');
+  let host = 'local file';
+  if (!local) {
+    try {
+      host = new URL(url.replace(/^libsql:/, 'https:')).host;
+    } catch {
+      host = 'remote database';
+    }
+  }
+  const count = async (table) => (await one(`SELECT COUNT(*) AS n FROM ${table}`)).n;
+  return {
+    kind: local ? 'local' : 'turso',
+    host,
+    users: await count('users'),
+    customers: await count('customers'),
+    transactions: await count('transactions'),
   };
 }

@@ -23,7 +23,7 @@ export default function Income() {
         <div className="flex items-center gap-1 rounded-lg bg-surface-2 p-1">
           {RANGES.map((r) => (
             <button key={r} onClick={() => setRange(r)}
-              className={cls('rounded-md px-2.5 py-1 text-xs font-semibold', range === r ? 'bg-white shadow-sm text-text-primary' : 'text-text-secondary')}>
+              className={cls('rounded-md px-2.5 py-1 text-xs font-semibold', range === r ? 'bg-surface shadow-sm text-text-primary' : 'text-text-secondary')}>
               {t(r as never)}
             </button>
           ))}

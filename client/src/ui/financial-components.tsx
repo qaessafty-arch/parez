@@ -23,7 +23,7 @@ export function StatCard({
   return (
     <div
       className={cls(
-        "bg-white rounded-lg border border-border-color p-4 shadow-sm hover:shadow-md transition-shadow",
+        "bg-surface rounded-lg border border-border-color p-4 shadow-sm hover:shadow-md transition-shadow",
         className,
       )}
     >
@@ -67,7 +67,7 @@ export function BalanceCard({
   className?: string;
 }) {
   return (
-    <div className={cls("bg-white rounded-lg border border-border-color p-4 shadow-sm hover:shadow-md transition-shadow", className)}>
+    <div className={cls("bg-surface rounded-lg border border-border-color p-4 shadow-sm hover:shadow-md transition-shadow", className)}>
       <div className="flex justify-between items-start">
         <div>
           <p className="text-caption text-text-secondary">{label}</p>

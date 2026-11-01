@@ -87,6 +87,9 @@
    doesn't just invert. Theme is saved to localStorage.
    ============================================================ */
 .dark {
+  /* Lighter blue so buttons and links keep contrast on the dark surface. */
+  --color-primary: #3B82F6;
+  --color-primary-dark: #2563EB;
   --color-surface: #1E293B;
   --color-muted: #3F4D66;
   --color-page: #0F172A;
@@ -118,8 +121,8 @@
 body {
   font-family: "IBM Plex Sans", "IBM Plex Sans Arabic", system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: var(--bg-page);
-  color: var(--text-primary);
+  background-color: var(--color-page);
+  color: var(--color-text);
   transition: background-color 0.2s ease, color 0.2s ease;
   font-feature-settings: "tnum" 1, "cv03" 1;
   -webkit-font-smoothing: antialiased;
