@@ -52,13 +52,14 @@ export async function audit(entry) {
   );
 }
 
-export async function listAudit({ from = null, to = null, action = null, entity = null, search = null, limit = 100, offset = 0 } = {}) {
+export async function listAudit({ from = null, to = null, action = null, entity = null, user = null, search = null, limit = 100, offset = 0 } = {}) {
   const where = [];
   const params = [];
   if (from) { where.push('created_at >= ?'); params.push(`${from}T00:00:00Z`); }
   if (to) { where.push('created_at <= ?'); params.push(`${to}T23:59:59Z`); }
   if (action) { where.push('action = ?'); params.push(action); }
   if (entity) { where.push('entity = ?'); params.push(entity); }
+  if (user) { where.push('user_name LIKE ?'); params.push(`%${user}%`); }
   if (search) {
     where.push('(user_name LIKE ? OR entity_id LIKE ? OR reason LIKE ? OR old_value LIKE ? OR new_value LIKE ?)');
     const like = `%${search}%`;

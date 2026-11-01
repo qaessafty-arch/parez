@@ -6,7 +6,8 @@ import { Badge, Button, Card, EmptyState, Input, PageHeader, Spinner, Table, Td,
 
 export default function Audit() {
   const { t } = useI18n();
-  const [filters, setFilters] = useState({ from: '', to: '', action: '', entity: '', search: '' });
+  const emptyFilters = { from: '', to: '', action: '', entity: '', user: '', search: '' };
+  const [filters, setFilters] = useState(emptyFilters);
   const [limit] = useState(100);
   const [offset, setOffset] = useState(0);
 
@@ -15,8 +16,12 @@ export default function Audit() {
 
   const { data, loading, error } = useLoad(() => api<any>(`/api/audit?${qs}`), [qs.toString()]);
   const actions = useLoad(() => api<any>('/api/audit/actions'), []);
+  const entities = useLoad(() => api<any>('/api/audit/entities'), []);
 
-  const setF = (k: keyof typeof filters) => (e: React.ChangeEvent<any>) => setFilters((x) => ({ ...x, [k]: e.target.value }));
+  const setF = (k: keyof typeof filters) => (e: React.ChangeEvent<any>) => {
+    setOffset(0);
+    setFilters((x) => ({ ...x, [k]: e.target.value }));
+  };
 
   return (
     <div>
@@ -27,15 +32,20 @@ export default function Audit() {
       </PageHeader>
 
       <Card className="mb-4 p-3">
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
           <Input type="date" value={filters.from} onChange={setF('from')} aria-label={t('from')} />
           <Input type="date" value={filters.to} onChange={setF('to')} aria-label={t('to')} />
-          <select value={filters.action} onChange={setF('action')} className="rounded-lg border border-border-color px-2 py-2 text-sm">
+          <select value={filters.action} onChange={setF('action')} aria-label={t('action')} className="rounded-lg border border-border-color px-2 py-2 text-sm">
             <option value="">{t('action')}: {t('all')}</option>
             {actions.data?.actions?.map((a: string) => <option key={a} value={a}>{a}</option>)}
           </select>
+          <select value={filters.entity} onChange={setF('entity')} aria-label={t('entity')} className="rounded-lg border border-border-color px-2 py-2 text-sm">
+            <option value="">{t('entity')}: {t('all')}</option>
+            {entities.data?.entities?.map((e: string) => <option key={e} value={e}>{e}</option>)}
+          </select>
+          <Input placeholder={t('created_by') + '…'} value={filters.user} onChange={setF('user')} aria-label={t('created_by')} />
           <Input placeholder={t('search') + '…'} value={filters.search} onChange={setF('search')} />
-          <Button variant="ghost" size="sm" onClick={() => setFilters({ from: '', to: '', action: '', entity: '', search: '' })}>{t('clear')}</Button>
+          <Button variant="ghost" size="sm" onClick={() => { setOffset(0); setFilters(emptyFilters); }}>{t('clear')}</Button>
         </div>
       </Card>
 
