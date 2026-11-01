@@ -5,7 +5,7 @@
  * and motion only in response to an action.
  */
 import {
-  createContext, useCallback, useContext, useEffect, useRef, useState,
+  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
   type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode,
   type SelectHTMLAttributes, type TextareaHTMLAttributes,
 } from 'react';
@@ -54,7 +54,7 @@ export function ToastHost({ children }: { children: ReactNode }) {
             )}
           >
             <span aria-hidden className={cls('mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
-              x.kind === 'ok' ? 'bg-white/40' : 'bg-white/40')}>
+              x.kind === 'ok' ? 'bg-surface/40' : 'bg-surface/40')}>
               {x.kind === 'ok' ? '✓' : '!'}
             </span>
             <span className="font-medium leading-snug">{x.text}</span>
@@ -613,38 +613,31 @@ export function CommissionRulesEditor({
   value, onChange,
 }: { value: string; onChange: (v: string) => void }) {
   const { t } = useI18n();
-  const [rules, setRules] = useState<Array<{
-    service_code: string;
-    type_code: string;
-    currency: string;
-    percent: number;
-  }>>([]);
+  type Rule = { service_code: string; type_code: string; currency: string; percent: number };
 
-  // Parse JSON on init/change
-  useEffect(() => {
+  // Controlled by `value`: no effects, so no render loop. The parent hears
+  // about a change only when the user actually changes something.
+  const rules = useMemo<Rule[]>(() => {
     try {
       const parsed = JSON.parse(value || '[]');
-      if (Array.isArray(parsed)) setRules(parsed);
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
-      setRules([]);
+      return [];
     }
   }, [value]);
 
-  // Stringify and notify parent on any change
-  useEffect(() => {
-    onChange(JSON.stringify(rules));
-  }, [rules, onChange]);
+  const commit = (next: Rule[]) => onChange(JSON.stringify(next));
 
   const addRule = () => {
-    setRules([...rules, { service_code: '', type_code: '', currency: '', percent: 1 }]);
+    commit([...rules, { service_code: '', type_code: '', currency: '', percent: 1 }]);
   };
 
   const removeRule = (idx: number) => {
-    setRules(rules.filter((_, i) => i !== idx));
+    commit(rules.filter((_, i) => i !== idx));
   };
 
   const updateRule = (idx: number, field: string, val: string | number) => {
-    setRules(rules.map((r, i) => i === idx ? { ...r, [field]: val } : r));
+    commit(rules.map((r, i) => (i === idx ? { ...r, [field]: val } : r)));
   };
 
   return (
@@ -653,7 +646,7 @@ export function CommissionRulesEditor({
         <p className="text-xs text-text-muted text-center py-2">{t('no_entries')}</p>
       )}
       {rules.map((r, i) => (
-        <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-border-color/10 bg-white p-2">
+        <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-border-color/10 bg-surface p-2">
           <button
             type="button"
             onClick={() => removeRule(i)}

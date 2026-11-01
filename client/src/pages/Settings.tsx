@@ -218,6 +218,23 @@ export default function Settings() {
             )}
           </Card>
 
+          {data?.database && (
+            <Card className="p-5">
+              <h3 className="mb-3 text-sm font-bold text-text-primary">Database</h3>
+              <div className="space-y-2 text-xs">
+                <Row k="Type" v={data.database.kind === 'turso' ? 'Turso (online)' : 'Local file'} />
+                <Row k="Host" v={data.database.host} />
+                <Row k="Users" v={String(data.database.users)} />
+                <Row k="Customers" v={String(data.database.customers)} />
+                <Row k="Transactions" v={String(data.database.transactions)} />
+              </div>
+              <p className="mt-3 text-[11px] text-text-muted">
+                If these counts look empty when they should not be, this site is connected to the wrong database.
+                Download a backup from the Backup page regularly.
+              </p>
+            </Card>
+          )}
+
           <Card className="p-5">
             <h3 className="mb-2 text-sm font-bold text-text-primary">Demo data</h3>
             <p className="mb-3 text-xs text-text-muted">

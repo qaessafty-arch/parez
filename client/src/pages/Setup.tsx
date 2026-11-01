@@ -40,7 +40,7 @@ export default function Setup({ onDone }: { onDone: () => Promise<void> | void }
 
   return (
     <div className="flex min-h-full items-center justify-center bg-gradient-to-br from-ink-950 via-ink-900 to-ink-800 p-4">
-      <form onSubmit={submit} className="w-full max-w-lg rounded-2xl bg-white p-7 shadow-2xl">
+      <form onSubmit={submit} className="w-full max-w-lg rounded-2xl bg-surface p-7 shadow-2xl">
         <div className="mb-6 flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/100 text-xl font-bold text-white">پ</div>
           <div>

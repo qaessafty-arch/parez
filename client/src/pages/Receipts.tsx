@@ -99,7 +99,7 @@ export function ReceiptView({ id, onClose }: { id: string; onClose?: () => void 
       {loading && <Spinner />}
       {data && (
         <div className="print-area">
-          <div className="mx-auto max-w-sm rounded border border-border-color/30 bg-white p-4 font-mono text-[12px] text-text-primary">
+          <div className="mx-auto max-w-sm rounded border border-border-color/30 bg-surface p-4 font-mono text-[12px] text-text-primary">
             <div className="text-center">
               <div className="text-lg font-bold">{data.snapshot.shop.name}</div>
               <div className="text-xs text-text-secondary">{data.snapshot.shop.address}</div>

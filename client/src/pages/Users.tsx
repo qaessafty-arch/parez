@@ -76,7 +76,7 @@ export default function Users() {
                   <div className="text-sm font-bold text-text-primary">{r.name} <span className="text-xs font-normal text-text-muted">({r.code})</span></div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {(r.permissions ?? []).slice(0, 12).map((p: string) => (
-                      <span key={p} className="rounded bg-white px-1.5 py-0.5 text-[10px] text-text-muted ring-1 ring-ink-900/[.10]">{p}</span>
+                      <span key={p} className="rounded bg-surface px-1.5 py-0.5 text-[10px] text-text-muted ring-1 ring-ink-900/[.10]">{p}</span>
                     ))}
                     {(r.permissions ?? []).length > 12 && <span className="text-[10px] text-text-muted">+{(r.permissions as string[]).length - 12}</span>}
                   </div>

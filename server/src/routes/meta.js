@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { all } from '../db/index.js';
 import { requirePermission } from '../middleware/index.js';
-import { shopInfo, listSettings, updateSettings } from '../services/settings.js';
+import { shopInfo, listSettings, updateSettings, databaseInfo } from '../services/settings.js';
 import { seedDemo } from '../db/seedDemo.js';
 import { clearDemoData } from '../db/seed.js';
 import { parse, z } from '../lib/validate.js';
@@ -25,7 +25,7 @@ masterRouter.get('/master', async (req, res) => {
 export const settingsRouter = Router();
 
 settingsRouter.get('/', requirePermission('settings.manage'), async (req, res) => {
-  res.json({ settings: await listSettings(), shop: await shopInfo() });
+  res.json({ settings: await listSettings(), shop: await shopInfo(), database: await databaseInfo() });
 });
 
 settingsRouter.patch('/', requirePermission('settings.manage'), async (req, res) => {

@@ -106,7 +106,7 @@ export default function CommandPalette({ open, onClose, onNew }: { open: boolean
       className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-4 pt-[10vh]"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div role="dialog" aria-modal="true" aria-label={t('search_or_jump')} className="animate-rise w-full max-w-xl overflow-hidden rounded-xl border border-surface/10 bg-white shadow-2xl">
+      <div role="dialog" aria-modal="true" aria-label={t('search_or_jump')} className="animate-rise w-full max-w-xl overflow-hidden rounded-xl border border-surface/10 bg-surface shadow-2xl">
         <div className="flex items-center gap-2 border-b border-surface/10 px-4">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-text-secondary">
             <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
