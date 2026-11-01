@@ -191,6 +191,18 @@ try {
   check('audit trail recorded', audit.total >= 10 && audit.rows.some((r) => r.action === 'RESTORE' || r.action === 'BACKUP' || r.action === 'DAILY_CLOSING'));
   check('search works', (await call('/api/search?q=Ahmed')).json.results.some((r) => r.kind === 'customer'));
 
+  console.log('\n-- dealers --');
+  const dealerList = (await call('/api/dealers')).json;
+  check('dealers: every dealer account listed', Array.isArray(dealerList) && dealerList.length >= 4);
+  const dealerBuy = (await call('/api/dealers/purchase', { method: 'POST', expect: 201, body: { account_code: 'FASTPAY', currency: 'IQD', qty: 10, unit_cost_minor: 150000 } })).json;
+  check('dealers: purchase adds stock', dealerBuy?.inventory?.current_qty === 10);
+  const dealerSell = (await call('/api/dealers/sale', { method: 'POST', expect: 201, body: { account_code: 'FASTPAY', currency: 'IQD', qty: 4, unit_price_minor: 200000 } })).json;
+  check('dealers: sale reduces stock and records profit', dealerSell?.inventory?.current_qty === 6 && dealerSell.inventory.profit_minor === 200000);
+  const dealerDetail = (await call('/api/dealers/FASTPAY?currency=IQD')).json;
+  check('dealers: detail by account code', dealerDetail?.inventory?.current_qty === 6);
+  const dealerMoves = (await call('/api/dealers/FASTPAY/movements?currency=IQD')).json;
+  check('dealers: movements recorded', dealerMoves?.total === 2);
+
   console.log('\n-- receipt render --');
   const receipt = (await call(`/api/receipts/${txn.receipt.receipt_number}`)).json;
   check('receipt snapshot complete', receipt.snapshot.shop.name === 'Smoke Shop' && receipt.snapshot.transaction.amount_minor === 25000000);

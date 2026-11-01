@@ -2,12 +2,11 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, downloadFile, errText } from '../lib/api';
 import { useI18n } from '../lib/i18n';
-import { cls, amountDisplay, todayISO } from '../lib/format';
+import { parseAmount } from '../lib/format';
 import {
   Alert, Badge, Button, Card, EmptyState, Field, Input, Modal, Money, MoneyInput, PageHeader,
   Spinner, Table, Td, Textarea, useLoad, useToast,
 } from '../ui/kit';
-import { useSession } from '../App';
 
 type Inventory = {
   id: number;
@@ -41,40 +40,61 @@ export default function Dealers() {
   const [params, setParams] = useSearchParams();
 
   const { data, loading, error, reload } = useLoad(() => api<any>('/api/dealers'), []);
-  const [detailId, setDetailId] = useState<number | null>(null);
+  // The open dealer is kept in the URL as ?dealer=CODE:CURRENCY, e.g. FASTPAY:IQD.
+  const dealerParam = params.get('dealer');
   const [detail, setDetail] = useState<{ inventory: Inventory; movements: { total: number; rows: Movement[] } } | null>(null);
   const [movementsPage, setMovementsPage] = useState(0);
+  // Which action modal is open, and for which dealer account.
+  const [modal, setModal] = useState<{ kind: 'purchase' | 'sale' | 'adjust'; inv: Inventory } | null>(null);
 
-  useEffect(() => {
-    const id = params.get('id');
-    if (id && Number.isFinite(Number(id))) {
-      setDetailId(Number(id));
-      loadDetail(Number(id));
-    } else {
-      setDetailId(null);
-      setDetail(null);
-    }
-  }, [params]);
+  const dealerPath = (code: string, currency: string) => `/api/dealers/${code}?currency=${currency}`;
 
-  const loadDetail = async (id: number) => {
+  const loadDetail = async (code: string, currency: string) => {
     try {
       const [inv, mov] = await Promise.all([
-        api<any>(`/api/dealers/${id}`),
-        api<any>(`/api/dealers/${id}/movements?limit=50`),
+        api<any>(dealerPath(code, currency)),
+        api<any>(`/api/dealers/${code}/movements?currency=${currency}&limit=50`),
       ]);
-      setDetail({ inventory: inv.inventory, movements: mov });
+      setDetail({ inventory: { ...inv.inventory, account_code: code, account_name: inv.inventory.account_name ?? code }, movements: mov });
     } catch (e) {
       toast('err', errText(e));
     }
   };
 
-  const handlePageChange = (dir: number) => {
-    setMovementsPage((p) => Math.max(0, p + dir));
-    if (detailId) {
-      api<any>(`/api/dealers/${detailId}/movements?limit=50&offset=${(movementsPage + dir) * 50}`)
-        .then((mov) => setDetail((d) => d ? { ...d, movements: mov } : null))
-        .catch((e) => toast('err', errText(e)));
+  useEffect(() => {
+    setMovementsPage(0);
+    const [code, currency] = (dealerParam ?? '').split(':');
+    if (code && currency) {
+      loadDetail(code, currency);
+    } else {
+      setDetail(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dealerParam]);
+
+  const handlePageChange = (dir: number) => {
+    const [code, currency] = (dealerParam ?? '').split(':');
+    if (!code || !currency) return;
+    const next = Math.max(0, movementsPage + dir);
+    setMovementsPage(next);
+    api<any>(`/api/dealers/${code}/movements?currency=${currency}&limit=50&offset=${next * 50}`)
+      .then((mov) => setDetail((d) => (d ? { ...d, movements: mov } : null)))
+      .catch((e) => toast('err', errText(e)));
+  };
+
+  const closeDetail = () => {
+    const p = new URLSearchParams(params);
+    p.delete('dealer');
+    setParams(p, { replace: true });
+    setDetail(null);
+    setMovementsPage(0);
+  };
+
+  const afterSave = () => {
+    setModal(null);
+    reload();
+    const [code, currency] = (dealerParam ?? '').split(':');
+    if (code && currency) loadDetail(code, currency);
   };
 
   return (
@@ -96,7 +116,7 @@ export default function Dealers() {
           {data.length === 0 ? <EmptyState text={t('no_dealers') || 'No dealer accounts configured'} /> : (
             <Table head={[t('account'), t('currency'), t('wholesale_qty'), t('wholesale_cost'), t('retail_qty'), t('retail_revenue'), t('current_qty'), t('profit'), t('actions')]}>
               {data.map((inv: Inventory) => (
-                <tr key={inv.id} className="hover:bg-surface">
+                <tr key={`${inv.account_code}-${inv.currency}`} className="hover:bg-surface">
                   <Td className="font-semibold text-xs">
                     {inv.account_name} <span className="text-text-muted ml-1">({inv.account_code})</span>
                   </Td>
@@ -113,16 +133,19 @@ export default function Dealers() {
                     <div className="flex gap-1">
                       <Button variant="ghost" size="sm" onClick={() => {
                         const p = new URLSearchParams(params);
-                        p.set('id', String(inv.id));
+                        p.set('dealer', `${inv.account_code}:${inv.currency}`);
                         setParams(p, { replace: true });
                       }}>
                         {t('view_detail') || 'Details'}
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => openPurchase(inv)}>
+                      <Button variant="outline" size="sm" onClick={() => setModal({ kind: 'purchase', inv })}>
                         ＋ {t('purchase') || 'Buy Stock'}
                       </Button>
-                      <Button variant="success" size="sm" disabled={inv.current_qty <= 0} onClick={() => openSale(inv)}>
+                      <Button variant="success" size="sm" disabled={inv.current_qty <= 0} onClick={() => setModal({ kind: 'sale', inv })}>
                         ＋ {t('sale') || 'Sell'}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setModal({ kind: 'adjust', inv })}>
+                        ± {t('adjustment') || 'Adjust'}
                       </Button>
                     </div>
                   </Td>
@@ -134,7 +157,7 @@ export default function Dealers() {
       )}
 
       {detail && (
-        <Modal open onClose={() => { const p = new URLSearchParams(params); p.delete('id'); setParams(p, { replace: true }); setDetail(null); setMovementsPage(0); }} title={`${t('view_detail') || 'Details'} — {detail.inventory.account_name} ({detail.inventory.account_code})`} wide>
+        <Modal open onClose={closeDetail} title={`${t('view_detail') || 'Details'} — ${detail.inventory.account_name} (${detail.inventory.account_code})`} wide>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <Stat label={t('wholesale_qty')} value={detail.inventory.wholesale_qty.toLocaleString()} />
@@ -188,16 +211,16 @@ export default function Dealers() {
         </Modal>
       )}
 
-      {purchaseOpen && <PurchaseModal inventory={purchaseInv!} onClose={closePurchase} onSaved={() => { closePurchase(); reload(); }} />}
-      {saleOpen && <SaleModal inventory={saleInv!} onClose={closeSale} onSaved={() => { closeSale(); reload(); }} />}
-      {adjustOpen && <AdjustModal inventory={adjustInv!} onClose={closeAdjust} onSaved={() => { closeAdjust(); reload(); }} />}
+      {modal?.kind === 'purchase' && <PurchaseModal inventory={modal.inv} onClose={() => setModal(null)} onSaved={afterSave} />}
+      {modal?.kind === 'sale' && <SaleModal inventory={modal.inv} onClose={() => setModal(null)} onSaved={afterSave} />}
+      {modal?.kind === 'adjust' && <AdjustModal inventory={modal.inv} onClose={() => setModal(null)} onSaved={afterSave} />}
     </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-border-color/10 bg-white p-3">
+    <div className="rounded-lg border border-border-color/10 bg-surface p-3">
       <div className="text-[11px] text-text-muted">{label}</div>
       <div className="mt-1 text-lg font-bold">{value}</div>
     </div>
@@ -215,7 +238,8 @@ function PurchaseModal({ inventory, onClose, onSaved }: { inventory: Inventory; 
   const submit = async () => {
     setError('');
     if (!f.qty || Number(f.qty) <= 0) return setError(t('invalid_amount') || 'Invalid quantity');
-    if (!f.unit_cost) return setError('Unit cost required');
+    const unitCost = parseAmount(f.unit_cost);
+    if (unitCost === null || unitCost < 0) return setError('Unit cost required');
     setBusy(true);
     try {
       await api('/api/dealers/purchase', {
@@ -224,7 +248,7 @@ function PurchaseModal({ inventory, onClose, onSaved }: { inventory: Inventory; 
           account_code: inventory.account_code,
           currency: inventory.currency,
           qty: Number(f.qty),
-          unit_cost_minor: f.unit_cost.replace(/,/g, ''),
+          unit_cost_minor: unitCost,
           notes: f.notes,
         },
       });
@@ -233,7 +257,7 @@ function PurchaseModal({ inventory, onClose, onSaved }: { inventory: Inventory; 
   };
 
   return (
-    <Modal open onClose={onClose} title={`${t('purchase') || 'Wholesale Purchase'} — {inventory.account_name}`}>
+    <Modal open onClose={onClose} title={`${t('purchase') || 'Wholesale Purchase'} — ${inventory.account_name}`}>
       <div className="space-y-4">
         <Field label={t('qty') || 'Quantity'} required><Input type="number" min="1" value={f.qty} onChange={setInput('qty')} autoFocus /></Field>
         <Field label={t('unit_cost') || 'Unit Cost'} required><MoneyInput value={f.unit_cost} onChange={setInput('unit_cost')} placeholder={t('auto_commission') || '0'} /></Field>
@@ -260,7 +284,8 @@ function SaleModal({ inventory, onClose, onSaved }: { inventory: Inventory; onCl
     setError('');
     if (!f.qty || Number(f.qty) <= 0) return setError(t('invalid_amount') || 'Invalid quantity');
     if (Number(f.qty) > inventory.current_qty) return setError(`${t('insufficient_stock') || 'Insufficient stock'} (${inventory.current_qty})`);
-    if (!f.unit_price) return setError('Unit price required');
+    const unitPrice = parseAmount(f.unit_price);
+    if (unitPrice === null || unitPrice < 0) return setError('Unit price required');
     setBusy(true);
     try {
       await api('/api/dealers/sale', {
@@ -269,7 +294,7 @@ function SaleModal({ inventory, onClose, onSaved }: { inventory: Inventory; onCl
           account_code: inventory.account_code,
           currency: inventory.currency,
           qty: Number(f.qty),
-          unit_price_minor: f.unit_price.replace(/,/g, ''),
+          unit_price_minor: unitPrice,
           notes: f.notes,
         },
       });
@@ -278,7 +303,7 @@ function SaleModal({ inventory, onClose, onSaved }: { inventory: Inventory; onCl
   };
 
   return (
-    <Modal open onClose={onClose} title={`${t('sale') || 'Retail Sale'} — {inventory.account_name}`}>
+    <Modal open onClose={onClose} title={`${t('sale') || 'Retail Sale'} — ${inventory.account_name}`}>
       <div className="space-y-4">
         <div className="rounded-lg bg-muted/50 p-3 text-sm">
           <div className="flex justify-between"><span>{t('available_stock') || 'Available Stock'}</span><b>{inventory.current_qty.toLocaleString()}</b></div>
@@ -316,8 +341,8 @@ function AdjustModal({ inventory, onClose, onSaved }: { inventory: Inventory; on
           account_code: inventory.account_code,
           currency: inventory.currency,
           qty_change: Number(f.qty_change),
-          unit_cost_minor: f.unit_cost ? f.unit_cost.replace(/,/g, '') : undefined,
-          unit_price_minor: f.unit_price ? f.unit_price.replace(/,/g, '') : undefined,
+          unit_cost_minor: f.unit_cost ? (parseAmount(f.unit_cost) ?? undefined) : undefined,
+          unit_price_minor: f.unit_price ? (parseAmount(f.unit_price) ?? undefined) : undefined,
           notes: f.notes,
         },
       });
@@ -326,7 +351,7 @@ function AdjustModal({ inventory, onClose, onSaved }: { inventory: Inventory; on
   };
 
   return (
-    <Modal open onClose={onClose} title={`${t('adjustment') || 'Adjustment'} — {inventory.account_name}`}>
+    <Modal open onClose={onClose} title={`${t('adjustment') || 'Adjustment'} — ${inventory.account_name}`}>
       <div className="space-y-4">
         <div className="rounded-lg bg-muted/50 p-3 text-sm">
           <div className="flex justify-between"><span>{t('current_stock') || 'Current Stock'}</span><b>{inventory.current_qty.toLocaleString()}</b></div>
@@ -344,15 +369,3 @@ function AdjustModal({ inventory, onClose, onSaved }: { inventory: Inventory; on
     </Modal>
   );
 }
-
-let purchaseOpen = false;
-let purchaseInv: Inventory | null = null;
-let saleOpen = false;
-let saleInv: Inventory | null = null;
-let adjustOpen = false;
-let adjustInv: Inventory | null = null;
-
-function openPurchase(inv: Inventory) { purchaseInv = inv; purchaseOpen = true; }
-function closePurchase() { purchaseInv = null; purchaseOpen = false; }
-function openSale(inv: Inventory) { saleInv = inv; saleOpen = true; }
-function closeSale() { saleInv = null; saleOpen = false; }
