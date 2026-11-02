@@ -9,7 +9,7 @@ import {
   type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode,
   type SelectHTMLAttributes, type TextareaHTMLAttributes,
 } from 'react';
-import { cls } from '../lib/format';
+import { cls, formatAmountTyping, caretAfterFormat } from '../lib/format';
 import { useI18n } from '../lib/i18n';
 
 /* ============================ toasts ============================ */
@@ -209,10 +209,24 @@ export function Input({ invalid, className, ...props }: InputHTMLAttributes<HTML
 }
 
 /** Amount entry: big, right-aligned, digits only feel. */
-export function MoneyInput({ invalid, className, ...props }: InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
+export function MoneyInput({ invalid, className, onChange, ...props }: InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
+  // Commas are added as the user types, so amounts read correctly without
+  // anyone counting digits. The caret stays where the user is typing.
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const raw = input.value;
+    const formatted = formatAmountTyping(raw);
+    if (formatted !== raw) {
+      const caret = caretAfterFormat(raw, input.selectionStart ?? raw.length, formatted);
+      input.value = formatted;
+      input.setSelectionRange(caret, caret);
+    }
+    onChange?.(e);
+  };
   return (
     <input
       {...props}
+      onChange={handleChange}
       inputMode="decimal"
       dir="ltr"
       aria-invalid={invalid || undefined}
