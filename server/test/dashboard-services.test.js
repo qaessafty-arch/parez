@@ -42,8 +42,25 @@ test('dashboard: the per-service commission adds up to the overall commission', 
   assert.equal(total, 6500);
 });
 
-test('dashboard: a service with no transactions does not appear as a row', async () => {
+test('dashboard: a service with no transactions shows as a zero row', async () => {
   await createTransaction({ service_code: 'fastpay', type_code: 'deposit', account_id: cash.id, amount: '1000', currency: 'IQD', commission: '0' }, user);
   const d = await dashboard({ range: 'custom', from: TODAY, to: TODAY });
-  assert.ok(!d.service_breakdown.some((r) => r.service_code === 'cardhouse'));
+  const cardhouse = d.service_breakdown.find((r) => r.service_code === 'cardhouse');
+  assert.ok(cardhouse, 'CardHouse is listed even with no activity');
+  assert.equal(cardhouse.tx_count, 0);
+  assert.equal(cardhouse.commission_minor, 0);
+});
+
+test('dashboard: every active service is listed, even with no activity, in sidebar order', async () => {
+  await createTransaction({ service_code: 'fib', type_code: 'deposit', account_id: cash.id, amount: '2000', currency: 'IQD', commission: '40' }, user);
+  const d = await dashboard({ range: 'custom', from: TODAY, to: TODAY });
+  const codes = d.service_breakdown.map((r) => r.service_code);
+  for (const code of ['fastpay', 'nasswallet', 'fib', 'cardhouse', 'ronaki']) {
+    assert.ok(codes.includes(code), `${code} must appear on the dashboard`);
+  }
+  const fastpay = d.service_breakdown.find((r) => r.service_code === 'fastpay');
+  assert.equal(fastpay.tx_count, 0);
+  assert.equal(fastpay.commission_minor, 0);
+  const sortOrders = d.service_breakdown.map((r) => r.sort_order);
+  assert.deepEqual(sortOrders, [...sortOrders].sort((a, b) => a - b), 'rows follow sidebar order');
 });

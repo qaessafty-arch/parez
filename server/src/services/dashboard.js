@@ -98,11 +98,28 @@ export async function dashboard({ range = 'today', from, to, currency } = {}) {
     chart.push({ date: d, inflow_minor: row.inflow_minor, outflow_minor: row.outflow_minor });
   }
 
-  // Balance of each service's own account, in the same currency as its row.
-  const serviceRows = byService.map((r) => {
-    const account = balances.find((b) => b.code === r.service_code.toUpperCase() && b.currency === r.currency);
-    return { ...r, balance_minor: account ? account.balance_minor : null };
-  });
+  // One row per active service, in sidebar order, so every service shows even
+  // with no activity yet. Balance comes from the service's own account.
+  const services = await all('SELECT code, name, sort_order FROM services WHERE is_active = 1 ORDER BY sort_order');
+  const balanceOf = (code, currency) => {
+    const account = balances.find((b) => b.code === code.toUpperCase() && b.currency === currency);
+    return account ? account.balance_minor : null;
+  };
+  const serviceRows = [];
+  for (const svc of services) {
+    const rows = byService.filter((r) => r.service_code === svc.code);
+    if (rows.length === 0) {
+      serviceRows.push({
+        service_code: svc.code, service_name: svc.name, sort_order: svc.sort_order, currency: primaryCurrency,
+        tx_count: 0, inflow_minor: 0, outflow_minor: 0, commission_minor: 0,
+        balance_minor: balanceOf(svc.code, primaryCurrency),
+      });
+      continue;
+    }
+    for (const r of rows) {
+      serviceRows.push({ ...r, balance_minor: balanceOf(svc.code, r.currency) });
+    }
+  }
 
   const cardValue = (rows, key, cur = primaryCurrency) =>
     rows.find((r) => r.currency === cur)?.[key] ?? 0;
