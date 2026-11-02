@@ -63,6 +63,9 @@ export default function Wallets({ serviceCode }: { serviceCode: 'fastpay' | 'nas
             ].map((block) => (
               <Card key={block.label} className="p-5">
                 <h3 className="mb-3 text-sm font-bold text-text-primary">{block.label}</h3>
+                {block.rows?.length === 0 && (
+                  <p className="py-4 text-center text-sm text-text-muted">{t('no_entries')}</p>
+                )}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {block.rows?.map((r: any) => (
                     <div key={r.currency} className="rounded-lg border border-border-color/[.08] p-3">
