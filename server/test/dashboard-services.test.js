@@ -64,3 +64,20 @@ test('dashboard: every active service is listed, even with no activity, in sideb
   const sortOrders = d.service_breakdown.map((r) => r.sort_order);
   assert.deepEqual(sortOrders, [...sortOrders].sort((a, b) => a - b), 'rows follow sidebar order');
 });
+
+test('dashboard and service page show the same commission for the same range', async () => {
+  const { walletSummary } = await import('../src/services/wallets.js');
+  await createTransaction({ service_code: 'fib', type_code: 'deposit', account_id: cash.id, amount: '2000', currency: 'IQD', commission: '40' }, user);
+  await createTransaction({ service_code: 'fib', type_code: 'deposit', account_id: cash.id, amount: '500', currency: 'IQD', commission: '10' }, user);
+  await createTransaction({ service_code: 'fastpay', type_code: 'deposit', account_id: cash.id, amount: '1000', currency: 'IQD', commission: '25' }, user);
+
+  const d = await dashboard({ range: 'custom', from: TODAY, to: TODAY });
+  const page = await walletSummary('fib', { range: 'custom', from: TODAY, to: TODAY });
+
+  const onDashboard = d.service_breakdown.find((r) => r.service_code === 'fib' && r.currency === 'IQD');
+  const onPage = page.period.find((r) => r.currency === 'IQD');
+  assert.equal(onDashboard.commission_minor, onPage.commission_minor, 'same commission on both');
+  assert.equal(onDashboard.inflow_minor, onPage.inflow_minor, 'same cash in on both');
+  assert.equal(onDashboard.tx_count, onPage.tx_count, 'same count on both');
+  assert.equal(page.commission[0].commission_minor, onDashboard.commission_minor, 'sidebar commission card matches');
+});

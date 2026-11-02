@@ -24,7 +24,11 @@ export default function Wallets({ serviceCode }: { serviceCode: 'fastpay' | 'nas
   const range = params.get('range') || 'today';
   const [createOpen, setCreateOpen] = useState(false);
 
-  const qs = `range=${range}`;
+  const customFrom = params.get('from');
+  const customTo = params.get('to');
+  const qs = range === 'custom' && customFrom && customTo
+    ? `range=custom&from=${customFrom}&to=${customTo}`
+    : `range=${range}`;
   const { data, loading, error, reload } = useLoad(
     () => api<any>(`/api/${serviceCode}/summary?${qs}`),
     [serviceCode, qs]

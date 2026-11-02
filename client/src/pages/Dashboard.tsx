@@ -32,6 +32,8 @@ export default function Dashboard() {
   const [range, setRange] = useState<Range>('today');
   const [from, setFrom] = useState(todayISO());
   const [to, setTo] = useState(todayISO());
+  // The service pages open on the same range the dashboard is showing.
+  const rangeQuery = range === 'custom' ? `range=custom&from=${from}&to=${to}` : `range=${range}`;
 
   const qs = range === 'custom' ? `from=${from}&to=${to}` : `range=${range}`;
   const { data, loading, refreshing, error, reload } = useLoad(() => api<any>(`/api/dashboard?${qs}`), [qs]);
@@ -148,7 +150,7 @@ export default function Dashboard() {
                   <tr
                     key={`${r.service_code}-${r.currency}`}
                     className={cls('hover:bg-surface', SERVICE_PAGE[r.service_code] && 'cursor-pointer')}
-                    onClick={() => SERVICE_PAGE[r.service_code] && nav(SERVICE_PAGE[r.service_code])}
+                    onClick={() => SERVICE_PAGE[r.service_code] && nav(`${SERVICE_PAGE[r.service_code]}?${rangeQuery}`)}
                     title={SERVICE_PAGE[r.service_code] ? t(('nav_' + r.service_code) as never) : undefined}
                   >
                     <Td className="font-semibold text-xs">
