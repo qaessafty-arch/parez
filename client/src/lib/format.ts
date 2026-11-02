@@ -52,3 +52,29 @@ export function fileSize(bytes: number): string {
 export function cls(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
 }
+
+/**
+ * Format an amount while it is typed: thousands separators in the whole part,
+ * at most two decimals. "1250.5" -> "1,250.5", "12000000" -> "12,000,000".
+ * Anything that is not a digit or the first dot is dropped.
+ */
+export function formatAmountTyping(raw: string): string {
+  const cleaned = raw.replace(/[^\d.]/g, '');
+  const dot = cleaned.indexOf('.');
+  const whole = (dot === -1 ? cleaned : cleaned.slice(0, dot)).replace(/^0+(?=\d)/, '');
+  const fraction = dot === -1 ? null : cleaned.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  if (fraction === null) return grouped;
+  return `${grouped || '0'}.${fraction}`;
+}
+
+/** Where the caret should go after formatting: keep the same number of digits before it. */
+export function caretAfterFormat(raw: string, caret: number, formatted: string): number {
+  const digitsBefore = raw.slice(0, caret).replace(/[^\d.]/g, '').length;
+  let seen = 0;
+  for (let i = 0; i < formatted.length; i++) {
+    if (seen >= digitsBefore) return i;
+    if (/[\d.]/.test(formatted[i])) seen++;
+  }
+  return formatted.length;
+}
