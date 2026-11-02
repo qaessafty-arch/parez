@@ -95,6 +95,7 @@ router.get('/:id', requirePermission('transaction.view'), async (req, res) => {
 router.patch('/:id', requirePermission('transaction.edit'), async (req, res) => {
   const body = parse(
     z.object({
+      // Display amounts ("1250.50"); the service converts them to minor units.
       amount: z.union([z.string(), z.number()]).optional(),
       commission: z.union([z.string(), z.number()]).optional(),
       reference_no: zReference.optional(),

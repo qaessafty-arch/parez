@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, downloadFile, errText } from '../lib/api';
 import { useI18n } from '../lib/i18n';
-import { cls, amountDisplay, parseAmount } from '../lib/format';
+import { cls, amountDisplay } from '../lib/format';
 import {
   Alert, Badge, Button, Card, DirectionMark, Drawer, EmptyState, Field, Input, Money,
   MoneyInput, PageHeader, Select, SkeletonRows, StatusBadge, Table, Td, Textarea, Toolbar,
@@ -449,10 +449,10 @@ function ActionForm({
           onClick={() => {
             const body: any = { reason: reason.trim() };
             if (kind === 'edit') {
-              const a = parseAmount(f.amount);
-              const c = parseAmount(f.commission);
-              if (a !== null) body.amount_minor = a;
-              if (c !== null) body.commission_minor = c;
+              // The server takes display amounts ("1250.50") and converts them itself.
+              // Sending minor units under other names was silently dropped.
+              body.amount = f.amount.replace(/,/g, '');
+              body.commission = (f.commission || '0').replace(/,/g, '');
               body.reference_no = f.reference_no;
               body.description = f.description;
               body.biz_date = f.biz_date;
