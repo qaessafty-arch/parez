@@ -60,6 +60,23 @@ export async function dashboard({ range = 'today', from, to, currency } = {}) {
      GROUP BY c.currency`
   );
 
+  // Per service and currency, so each service's cash in/out, commission and
+  // count can be read on its own. Commission is summed from each transaction.
+  const byService = await all(
+    `SELECT s.code AS service_code, s.name AS service_name, s.sort_order, t.currency,
+            COUNT(*) AS tx_count,
+            COALESCE(SUM(CASE WHEN t.direction = 'in'  THEN t.amount_minor ELSE 0 END), 0) AS inflow_minor,
+            COALESCE(SUM(CASE WHEN t.direction = 'out' THEN t.amount_minor ELSE 0 END), 0) AS outflow_minor,
+            COALESCE(SUM(t.commission_minor), 0) AS commission_minor
+     FROM transactions t
+     JOIN services s ON s.id = t.service_id
+     WHERE t.biz_date >= ? AND t.biz_date <= ? AND t.status = 'completed'
+     GROUP BY s.id, t.currency
+     ORDER BY s.sort_order, t.currency`,
+    span.from,
+    span.to
+  );
+
   const balances = await allBalances(null);
   const byKind = (kind) => balances.filter((b) => b.kind === kind && b.currency === primaryCurrency);
 
@@ -81,6 +98,12 @@ export async function dashboard({ range = 'today', from, to, currency } = {}) {
     chart.push({ date: d, inflow_minor: row.inflow_minor, outflow_minor: row.outflow_minor });
   }
 
+  // Balance of each service's own account, in the same currency as its row.
+  const serviceRows = byService.map((r) => {
+    const account = balances.find((b) => b.code === r.service_code.toUpperCase() && b.currency === r.currency);
+    return { ...r, balance_minor: account ? account.balance_minor : null };
+  });
+
   const cardValue = (rows, key, cur = primaryCurrency) =>
     rows.find((r) => r.currency === cur)?.[key] ?? 0;
 
@@ -88,6 +111,7 @@ export async function dashboard({ range = 'today', from, to, currency } = {}) {
     range: span,
     primary_currency: primaryCurrency,
     currency_breakdown: summaryAll,
+    service_breakdown: serviceRows,
     cards: {
       transactions_count: summary.reduce((a, r) => a + r.tx_count, 0),
       revenue_minor: cardValue(summary, 'inflow_minor'),

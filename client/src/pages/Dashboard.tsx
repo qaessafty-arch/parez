@@ -128,6 +128,30 @@ export default function Dashboard() {
             </div>
           )}
 
+          {(data.service_breakdown ?? []).length > 0 && (
+            <Card className="mb-4">
+              <div className="flex items-center justify-between border-b border-border-color px-5 py-3">
+                <h2 className="text-sm font-bold text-text-primary">{t('service')}</h2>
+                <span className="text-xs text-text-muted">{data.range.label === 'custom' ? `${data.range.from} → ${data.range.to}` : t(range as never)}</span>
+              </div>
+              <Table head={[t('service'), t('currency'), t('count'), t('cash_in'), t('cash_out'), t('commission'), t('balance')]}>
+                {data.service_breakdown.map((r: any) => (
+                  <tr key={`${r.service_code}-${r.currency}`} className="hover:bg-surface">
+                    <Td className="font-semibold text-xs">{r.service_name}</Td>
+                    <Td className="text-xs">{r.currency}</Td>
+                    <Td className="num text-xs">{r.tx_count}</Td>
+                    <Td className="num text-xs text-in-600"><Money minor={r.inflow_minor} currency={r.currency} /></Td>
+                    <Td className="num text-xs text-out-600"><Money minor={r.outflow_minor} currency={r.currency} /></Td>
+                    <Td className="num text-xs font-bold text-primary"><Money minor={r.commission_minor} currency={r.currency} bold /></Td>
+                    <Td className="num text-xs">
+                      {r.balance_minor === null ? <span className="text-text-muted">—</span> : <Money minor={r.balance_minor} currency={r.currency} />}
+                    </Td>
+                  </tr>
+                ))}
+              </Table>
+            </Card>
+          )}
+
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="lg:col-span-2">
               <div className="flex items-center justify-between border-b border-border-color px-5 py-3">
