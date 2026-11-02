@@ -16,6 +16,15 @@ import { useSession } from '../App';
 const RANGES = ['today', 'yesterday', 'week', 'month', 'custom'] as const;
 type Range = (typeof RANGES)[number];
 
+/** Sidebar page for each service, so a dashboard row opens the same numbers. */
+const SERVICE_PAGE: Record<string, string> = {
+  fastpay: '/fastpay',
+  nasswallet: '/nasswallet',
+  fib: '/fib',
+  cardhouse: '/cardhouse',
+  ronaki: '/ronaki',
+};
+
 export default function Dashboard() {
   const { t } = useI18n();
   const { meta, can } = useSession();
@@ -136,8 +145,16 @@ export default function Dashboard() {
               </div>
               <Table head={[t('service'), t('currency'), t('count'), t('cash_in'), t('cash_out'), t('commission'), t('balance')]}>
                 {data.service_breakdown.map((r: any) => (
-                  <tr key={`${r.service_code}-${r.currency}`} className="hover:bg-surface">
-                    <Td className="font-semibold text-xs">{r.service_name}</Td>
+                  <tr
+                    key={`${r.service_code}-${r.currency}`}
+                    className={cls('hover:bg-surface', SERVICE_PAGE[r.service_code] && 'cursor-pointer')}
+                    onClick={() => SERVICE_PAGE[r.service_code] && nav(SERVICE_PAGE[r.service_code])}
+                    title={SERVICE_PAGE[r.service_code] ? t(('nav_' + r.service_code) as never) : undefined}
+                  >
+                    <Td className="font-semibold text-xs">
+                      {r.service_name}
+                      {SERVICE_PAGE[r.service_code] && <span className="ms-1 text-text-muted">↗</span>}
+                    </Td>
                     <Td className="text-xs">{r.currency}</Td>
                     <Td className="num text-xs">{r.tx_count}</Td>
                     <Td className="num text-xs text-in-600"><Money minor={r.inflow_minor} currency={r.currency} /></Td>
