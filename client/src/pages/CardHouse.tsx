@@ -55,10 +55,10 @@ export default function CardHousePage() {
       {/* summary cards */}
       {summary.data && (
         <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <SumCard label={t('cash_in')} value={amountDisplay(summary.data.period[0]?.inflow_minor ?? 0)} currency={summary.data.period[0]?.currency ?? 'IQD'} tone="green" />
-          <SumCard label={t('cash_out')} value={amountDisplay(summary.data.period[0]?.outflow_minor ?? 0)} currency={summary.data.period[0]?.currency ?? 'IQD'} tone="red" />
-          <SumCard label={t('commission')} value={amountDisplay(summary.data.period[0]?.commission_minor ?? 0)} currency={summary.data.period[0]?.currency ?? 'IQD'} tone="blue" />
-          <SumCard label={t('wallet_balances')} value={amountDisplay(summary.data.balances?.[0]?.balance_minor ?? 0)} currency={summary.data.balances?.[0]?.currency ?? 'IQD'} tone="gray" />
+          <SumCard label={t('cash_in')} minor={summary.data.period[0]?.inflow_minor ?? 0} currency={summary.data.period[0]?.currency ?? 'IQD'} tone="green" />
+          <SumCard label={t('cash_out')} minor={summary.data.period[0]?.outflow_minor ?? 0} currency={summary.data.period[0]?.currency ?? 'IQD'} tone="red" />
+          <SumCard label={t('commission')} minor={summary.data.period[0]?.commission_minor ?? 0} currency={summary.data.period[0]?.currency ?? 'IQD'} tone="blue" />
+          <SumCard label={t('wallet_balances')} minor={summary.data.balances?.[0]?.balance_minor ?? 0} currency={summary.data.balances?.[0]?.currency ?? 'IQD'} tone="gray" />
         </div>
       )}
 
@@ -140,13 +140,14 @@ export default function CardHousePage() {
   );
 }
 
-function SumCard({ label, value, currency, tone }: { label: string; value: string; currency: string; tone?: 'red' | 'green' | 'blue' | 'gray' }) {
+/** `minor` is an integer in minor units (×100), exactly as the server sends it. */
+function SumCard({ label, minor, currency, tone }: { label: string; minor: number; currency: string; tone?: 'red' | 'green' | 'blue' | 'gray' }) {
   const tones = { red: 'text-out-600', green: 'text-in-600', blue: 'text-info-600', gray: 'text-text-secondary' };
   return (
     <Card className="px-4 py-3">
       <div className="text-[11px] font-semibold text-text-muted">{label}</div>
       <div className={cls('mt-1 text-xl font-bold', tone ? tones[tone] : 'text-text-primary')}>
-        <Money minor={parseInt(value.replace(/,/g, '')) || 0} currency={currency} bold />
+        <Money minor={minor} currency={currency} bold />
       </div>
     </Card>
   );
